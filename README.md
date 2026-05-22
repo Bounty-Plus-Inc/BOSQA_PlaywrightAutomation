@@ -24,40 +24,6 @@ Start the dashboard:
 npm run dev
 ```
 
-Open the local URL shown by Vite, usually:
-
-```txt
-http://localhost:5173
-```
-
-When a developer clicks `Headed` or `UI`, the Playwright test runs on that developer's own machine.
-
-## Run Tests Directly
-
-Run all tests:
-
-```bash
-npm test
-```
-
-Run headed:
-
-```bash
-npm run playwright-headed
-```
-
-Run Playwright UI mode:
-
-```bash
-npm run playwright-ui
-```
-
-Open the latest Playwright report:
-
-```bash
-npm run playwright-report
-```
-
 ## Environment
 
 Copy the example environment file for local credentials:
