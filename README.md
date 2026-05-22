@@ -56,5 +56,9 @@ PowerShell:
 $env:BPI_USERID = "your_login_id"
 $env:BPI_PASSWORD = "your_password"
 ```
-
+QA Notes:
+For .env account credentials make sure you have full access for everything for the test to run smoothly and not flaky:
+for assurance of data driven test : use this credentials instead
+BPI_USERID=playwrightAut
+BPI_PASSWORD=playwrightPass
 
