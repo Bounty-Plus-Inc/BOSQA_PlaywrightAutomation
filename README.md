@@ -91,14 +91,4 @@ $env:BPI_USERID = "your_login_id"
 $env:BPI_PASSWORD = "your_password"
 ```
 
-## GitHub Notes
 
-Do not commit generated or local-only folders:
-
-- `node_modules/`
-- `dist/`
-- `playwright-report/`
-- `test-results/`
-- `.env` files
-
-Those are already ignored by `.gitignore`.
