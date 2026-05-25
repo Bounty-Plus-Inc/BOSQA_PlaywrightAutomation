@@ -24,40 +24,6 @@ Start the dashboard:
 npm run dev
 ```
 
-Open the local URL shown by Vite, usually:
-
-```txt
-http://localhost:5173
-```
-
-When a developer clicks `Headed` or `UI`, the Playwright test runs on that developer's own machine.
-
-## Run Tests Directly
-
-Run all tests:
-
-```bash
-npm test
-```
-
-Run headed:
-
-```bash
-npm run playwright-headed
-```
-
-Run Playwright UI mode:
-
-```bash
-npm run playwright-ui
-```
-
-Open the latest Playwright report:
-
-```bash
-npm run playwright-report
-```
-
 ## Environment
 
 Copy the example environment file for local credentials:
@@ -90,15 +56,11 @@ PowerShell:
 $env:BPI_USERID = "your_login_id"
 $env:BPI_PASSWORD = "your_password"
 ```
+QA Notes:
+For .env account credentials make sure you have full access for everything for the test to run smoothly and not flaky:
+for assurance of data driven test : use this credentials instead
+```bash
+BPI_USERID=playwrightAut
+BPI_PASSWORD=playwrightPass
+```
 
-## GitHub Notes
-
-Do not commit generated or local-only folders:
-
-- `node_modules/`
-- `dist/`
-- `playwright-report/`
-- `test-results/`
-- `.env` files
-
-Those are already ignored by `.gitignore`.
