@@ -24,6 +24,12 @@ Start the dashboard:
 npm run dev
 ```
 
+## Developer Guide
+
+For adding new scenarios, page objects, dashboard entries, screenshots, and result metadata, see:
+
+`docs/developer/tutorial.txt`
+
 ## Environment
 
 Copy the example environment file for local credentials:
