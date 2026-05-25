@@ -1,7 +1,7 @@
 const { test } = require('@playwright/test');
-const { LoginPage } = require('../pages/LoginPage');
-const { MainMenuPage } = require('../pages/MainMenuPage');
-const { DeliveryOrderPage } = require('../pages/DeliveryOrderPage');
+const { LoginPage } = require('../pages/base/LoginPage');
+const { MainMenuPage } = require('../pages/base/MainMenuPage');
+const { DeliveryOrderPage } = require('../pages/transactions/DeliveryOrderPage');
 const { takeStepScreenshot } = require('../helpers/screenshots');
 const {
   finishRunSummary,

@@ -1,4 +1,4 @@
-const { LoginPage } = require('../pages/LoginPage');
+const { LoginPage } = require('../pages/base/LoginPage');
 
 /**
  * Compatibility helper for existing tests.

@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { LoginPage } = require('./pages/LoginPage');
+const { LoginPage } = require('./pages/base/LoginPage');
 
 test('login redirects to index and shows company name', async ({ page }) => {
   const loginPage = new LoginPage(page);

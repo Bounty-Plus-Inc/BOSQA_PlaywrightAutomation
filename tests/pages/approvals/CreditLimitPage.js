@@ -1,5 +1,5 @@
 const { expect } = require('@playwright/test');
-const { BasePage } = require('./BasePage');
+const { BasePage } = require('../base/BasePage');
 
 class CreditLimitPage extends BasePage {
   async createCheck({ customerNo, approverUserId, docNo, beforeAdd }) {
@@ -79,10 +79,10 @@ class CreditLimitPage extends BasePage {
 
   async expectResultsTableVisible() {
     const resultBox = await this.findInAllFrames('div#divT1', 20);
-    await expect(resultBox).toBeVisible({ timeout: 10000 });
+    await expect(resultBox).toBeVisible({ timeout: 3000 });
 
     const resultTable = await this.findInAllFrames('table#T1[name="T1"]', 20);
-    await expect(resultTable).toBeVisible({ timeout: 10000 });
+    await expect(resultTable).toBeVisible({ timeout: 3000 });
   }
 
   async selectSalesOrderInResults(docNo) {
@@ -95,7 +95,7 @@ class CreditLimitPage extends BasePage {
 
     const checkbox = await this.findInAllFrames(`#${row.checkboxId}`, 10);
     await checkbox.scrollIntoViewIfNeeded().catch(() => {});
-    await expect(checkbox).toBeVisible({ timeout: 10000 });
+    await expect(checkbox).toBeVisible({ timeout: 3000 });
 
     const tagName = await checkbox.evaluate((element) => element.tagName.toLowerCase());
     const inputType = await checkbox.evaluate((element) => element.getAttribute('type') || '');
@@ -114,13 +114,13 @@ class CreditLimitPage extends BasePage {
       `xpath=//*[@id="dd_u_docnoT1r${rowNumber}"]/ancestor::tr[contains(@class,"tableBoxRow")]`,
       10
     );
-    await expect(row).toBeVisible({ timeout: 10000 });
+    await expect(row).toBeVisible({ timeout: 5000 });
 
     const docNoInput = await this.findInAllFrames(`#df_u_docnoT1r${rowNumber}`, 10);
     await expect(docNoInput).toHaveValue(docNo);
 
     const docNoLabel = await this.findInAllFrames(`#dd_u_docnoT1r${rowNumber}`, 10);
-    await expect(docNoLabel).toBeVisible({ timeout: 10000 });
+    await expect(docNoLabel).toBeVisible({ timeout: 5000 });
     await expect(docNoLabel).toHaveText(docNo);
   }
 
@@ -177,7 +177,7 @@ class CreditLimitPage extends BasePage {
           const label = await docStatus.locator('option:checked').textContent().catch(() => '');
           return `${value}|${(label || '').trim()}`;
         },
-        { timeout: 20000 }
+        { timeout: 5000 }
       )
       .toContain('O|Open');
   }
@@ -260,7 +260,7 @@ class CreditLimitPage extends BasePage {
           continue;
         }
       }
-      await this.page.waitForTimeout(500);
+      await this.page.waitForTimeout(1000);
     }
 
     throw new Error(`Sales Order docNo not found in credit-limit results: ${docNo}`);

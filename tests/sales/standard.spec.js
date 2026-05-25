@@ -1,8 +1,8 @@
 const { test } = require('@playwright/test');
-const { LoginPage } = require('../pages/LoginPage');
-const { MainMenuPage } = require('../pages/MainMenuPage');
-const { SalesOrderPage } = require('../pages/SalesOrderPage');
-const { CreditLimitPage } = require('../pages/CreditLimitPage');
+const { LoginPage } = require('../pages/base/LoginPage');
+const { MainMenuPage } = require('../pages/base/MainMenuPage');
+const { SalesOrderPage } = require('../pages/transactions/SalesOrderPage');
+const { CreditLimitPage } = require('../pages/approvals/CreditLimitPage');
 const { takeStepScreenshot } = require('../helpers/screenshots');
 const {
   finishRunSummary,
@@ -16,6 +16,10 @@ test('SO with Credit Limit', async ({ page }) => {
   const testName = 'sales standard process';
   const salesBpCode = process.env.BPI_SALES_BPCODE || '10000010';
   const salesItemCode = process.env.BPI_SALES_ITEMCODE || '10000002';
+  const salesItemCount = Math.min(
+    Math.max(Number.parseInt(process.env.BPI_SALES_ITEM_COUNT || '1', 10) || 1, 1),
+    20
+  );
   const approverUserId = process.env.BPI_USERID || 'playwrightAut';
   const loginPage = new LoginPage(page);
   const menu = new MainMenuPage(page);
@@ -69,13 +73,11 @@ test('SO with Credit Limit', async ({ page }) => {
   await salesOrder.selectDocSeries('359');
   await takeStepScreenshot(page, testName, '03_DocSeries_Selected');
 
-  await salesOrder.selectBusinessPartner(salesBpCode);
-  await takeStepScreenshot(page, testName, '01_BP_Selected');
-
-  await salesOrder.addItem({
+  await salesOrder.addItems({
     itemCode: salesItemCode,
     unitPrice: '100',
-    businessCenter: 'NCRCL'
+    businessCenter: 'NCRCL',
+    count: salesItemCount
   });
   await takeStepScreenshot(page, testName, '04_Item_Updated');
 

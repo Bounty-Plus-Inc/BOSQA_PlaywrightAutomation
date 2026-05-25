@@ -1,5 +1,5 @@
 const { expect } = require('@playwright/test');
-const { BasePage } = require('./BasePage');
+const { BasePage } = require('../base/BasePage');
 
 class TransactionApprovalPage extends BasePage {
   async expectLoaded() {

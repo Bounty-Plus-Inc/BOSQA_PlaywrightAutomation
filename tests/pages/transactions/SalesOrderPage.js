@@ -1,7 +1,7 @@
 const { expect } = require('@playwright/test');
-const { BasePage } = require('./BasePage');
-const { BusinessPartnerPopup } = require('./BusinessPartnerPopup');
-const { ItemPopup } = require('./ItemPopup');
+const { BasePage } = require('../base/BasePage');
+const { BusinessPartnerPopup } = require('../popups/BusinessPartnerPopup');
+const { ItemPopup } = require('../popups/ItemPopup');
 
 class SalesOrderPage extends BasePage {
   async expectCustomerLabelVisible() {
@@ -35,7 +35,7 @@ class SalesOrderPage extends BasePage {
     const selectedCustomerCode = await customerPopup.selectCustomerCode(preferredCode);
 
     const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]');
-    await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 20000 });
+    await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 7000 });
     return selectedCustomerCode;
   }
 
@@ -57,13 +57,23 @@ class SalesOrderPage extends BasePage {
     const bpPopup = new BusinessPartnerPopup(bpPopupPage);
     const selectedCustomerCode = await bpPopup.selectCustomerCode(preferredCode);
     const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]');
-    await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 20000 });
+    await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 2000 });
     return selectedCustomerCode;
   }
 
+  async addItems({ itemCode, unitPrice, businessCenter, count = 1 }) {
+    for (let index = 0; index < count; index += 1) {
+      await this.addItem({
+        itemCode,
+        unitPrice,
+        businessCenter
+      });
+    }
+  }
+
   async addItem({ itemCode, unitPrice, businessCenter }) {
-    const itemCfl = await this.findInAllFrames('#cfl_itemcodeT1');
-    const itemPopupPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
+    const itemCfl = await this.findInAllFrames('#cfl_itemcodeT1', 6);
+    const itemPopupPromise = this.page.context().waitForEvent('page', { timeout: 2000 });
     await itemCfl.click();
 
     const itemPopupPage = await itemPopupPromise;
@@ -73,6 +83,11 @@ class SalesOrderPage extends BasePage {
     await (await this.findInAllFrames('#df_unitpriceT1')).fill(unitPrice);
     await (await this.findInAllFrames('#df_u_business_centerT1')).selectOption(businessCenter);
     await (await this.findInAllFrames('#T1_btnUpdate')).click();
+    await this.waitForItemEntryReady();
+  }
+
+  async waitForItemEntryReady() {
+    await this.findInAllFrames('#cfl_itemcodeT1', 6);
   }
 
   async fillHeaderDetails({ distributionChannel, divisionIndex }) {
@@ -88,7 +103,7 @@ class SalesOrderPage extends BasePage {
     await (await this.findInAllFrames('#btnSaveAsDraft')).click();
 
     await expect
-      .poll(async () => this.readStatus(), { timeout: 20000 })
+      .poll(async () => this.readStatus(), { timeout: 2000 })
       .toContain('D|Draft');
   }
 
@@ -105,7 +120,7 @@ class SalesOrderPage extends BasePage {
     }
 
     let openStatusResult = await expect
-      .poll(async () => this.readStatus(), { timeout: 15000 })
+      .poll(async () => this.readStatus(), { timeout: 5000 })
       .toContain('O|Open')
       .then(() => true)
       .catch(() => false);
@@ -138,7 +153,7 @@ class SalesOrderPage extends BasePage {
         }
 
         openStatusResult = await expect
-          .poll(async () => this.readStatus(), { timeout: 10000 })
+          .poll(async () => this.readStatus(), { timeout: 5000 })
           .toContain('O|Open')
           .then(() => true)
           .catch(() => false);

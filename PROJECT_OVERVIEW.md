@@ -128,13 +128,15 @@ The approver defaults to the `BPI_USERID` environment variable or `playwrightAut
 
 | File | Responsibility |
 | --- | --- |
-| `tests/pages/BasePage.js` | Shared frame-aware locator helpers, click helpers, visibility helpers, and cross-frame text checks. |
-| `tests/pages/LoginPage.js` | Login navigation, exact value entry, login submit, and company visibility assertion. |
-| `tests/pages/MainMenuPage.js` | Opens Sales Order and Credit Limit Checking through the application menu. |
-| `tests/pages/SalesOrderPage.js` | Handles Sales Order form actions, popup selection, item entry, header details, draft save, Add/Update behavior, status reading, credit-limit detection, and document memory capture. |
-| `tests/pages/CreditLimitPage.js` | Creates a credit-limit check, filters by customer, selects the matching Sales Order row, approves it, clicks Add, and verifies success/Open status. |
-| `tests/pages/BusinessPartnerPopup.js` | Reads and selects business partner/customer rows from lookup popups. |
-| `tests/pages/ItemPopup.js` | Selects an item by visible label and confirms the popup. |
+| `tests/pages/base/BasePage.js` | Shared frame-aware locator helpers, click helpers, visibility helpers, and cross-frame text checks. |
+| `tests/pages/base/LoginPage.js` | Login navigation, exact value entry, login submit, and company visibility assertion. |
+| `tests/pages/base/MainMenuPage.js` | Opens Sales Order, Delivery Order, Credit Limit, and approval pages through the application menu. |
+| `tests/pages/transactions/SalesOrderPage.js` | Handles Sales Order form actions, popup selection, item entry, header details, draft save, Add/Update behavior, status reading, credit-limit detection, and document memory capture. |
+| `tests/pages/transactions/DeliveryOrderPage.js` | Handles Delivery Order form actions, Copy From Sales Orders, logistics fields, lookup selections, and draft save. |
+| `tests/pages/approvals/CreditLimitPage.js` | Creates a credit-limit check, filters by customer, selects the matching Sales Order row, approves it, clicks Add, and verifies success/Open status. |
+| `tests/pages/approvals/TransactionApprovalPage.js` | Handles transaction approval filtering, row selection, approval decision, Add, and Open/uneditable status verification. |
+| `tests/pages/popups/BusinessPartnerPopup.js` | Reads and selects business partner/customer rows from lookup popups. |
+| `tests/pages/popups/ItemPopup.js` | Selects an item by visible label and confirms the popup. |
 
 ## Helpers
 

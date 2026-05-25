@@ -1,4 +1,4 @@
-require('../helpers/env');
+require('../../helpers/env');
 
 const { expect } = require('@playwright/test');
 const { BasePage } = require('./BasePage');

@@ -1,4 +1,4 @@
-const { BasePage } = require('./BasePage');
+const { BasePage } = require('../base/BasePage');
 
 class ItemPopup extends BasePage {
   async selectItemByLabel(itemCode) {
@@ -8,7 +8,7 @@ class ItemPopup extends BasePage {
 
     const itemOkButton = await this.findInAllFrames('a.button:has-text("OK")', 20);
     await itemOkButton.click();
-    await this.page.waitForEvent('close', { timeout: 10000 }).catch(() => {});
+    await this.page.waitForEvent('close', { timeout: 4000 }).catch(() => {});
   }
 }
 

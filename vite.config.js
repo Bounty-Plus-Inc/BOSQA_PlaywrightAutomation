@@ -447,6 +447,10 @@ export default defineConfig({
           const allowedModes = new Set(['headed', 'ui']);
           const spec = payload.spec;
           const mode = payload.mode;
+          const itemCount = Math.min(
+            Math.max(Number.parseInt(payload.itemCount ?? '1', 10) || 1, 1),
+            20
+          );
 
           if (!testSpecs[spec]) {
             sendJson(res, 400, { error: 'Unknown test selected' });
@@ -461,13 +465,17 @@ export default defineConfig({
           const modeArg = mode === 'ui' ? '--ui' : '--headed';
           const child = spawn('npx', ['playwright', 'test', spec, modeArg], {
             cwd: process.cwd(),
+            env: {
+              ...process.env,
+              BPI_SALES_ITEM_COUNT: String(itemCount)
+            },
             shell: true,
             detached: true,
             stdio: 'ignore'
           });
 
           child.unref();
-          sendJson(res, 200, { ok: true, spec, mode });
+          sendJson(res, 200, { ok: true, spec, mode, itemCount });
         });
 
         server.middlewares.use('/api/test-steps', (req, res) => {

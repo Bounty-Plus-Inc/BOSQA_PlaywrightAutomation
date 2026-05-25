@@ -26,9 +26,56 @@ const addOnTests = [
 
 const allTests = [...salesTests, ...addOnTests];
 
+const icons = {
+  sales: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 9h18l-2 10H5L3 9Z" />
+      <path d="M8 9V6a4 4 0 0 1 8 0v3" />
+    </svg>
+  ),
+  addons: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3v18M3 12h18" />
+      <path d="M6 6h12v12H6z" />
+    </svg>
+  ),
+  results: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 4h14v16H5z" />
+      <path d="M8 9h8M8 13h8M8 17h5" />
+    </svg>
+  ),
+  play: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m8 5 11 7-11 7V5Z" />
+    </svg>
+  ),
+  eye: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  file: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 2v6h6" />
+      <path d="M8 13h8M8 17h5" />
+    </svg>
+  ),
+  close: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  )
+};
+
+function Icon({ name }) {
+  return <span className="icon">{icons[name]}</span>;
+}
+
 export default function App() {
-  const [showSalesCategories, setShowSalesCategories] = useState(false);
-  const [showAddOns, setShowAddOns] = useState(false);
+  const [activePanel, setActivePanel] = useState('');
   const [selectedTest, setSelectedTest] = useState(null);
   const [runStatus, setRunStatus] = useState('');
   const [showResults, setShowResults] = useState(false);
@@ -37,10 +84,10 @@ export default function App() {
   const [resultSummary, setResultSummary] = useState(null);
   const [resultVideoUrl, setResultVideoUrl] = useState('');
   const [activeResultTest, setActiveResultTest] = useState(allTests[0]);
+  const [itemCount, setItemCount] = useState(1);
 
-  const selectPanel = (panel) => {
-    setShowSalesCategories(panel === 'sales');
-    setShowAddOns(panel === 'addons');
+  const togglePanel = (panel) => {
+    setActivePanel((current) => (current === panel ? '' : panel));
     setRunStatus('');
   };
 
@@ -53,19 +100,20 @@ export default function App() {
   const runSelectedTest = async (mode) => {
     if (!selectedTest) return;
 
-    setRunStatus(`Starting ${selectedTest.label} in ${mode} mode...`);
+    setRunStatus(`Starting ${selectedTest.label}...`);
     try {
       const response = await fetch('/api/run-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           spec: selectedTest.spec,
-          mode
+          mode,
+          itemCount
         })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to start Playwright');
-      setRunStatus(`${selectedTest.label} started in ${mode} mode. When it finishes, open View Results.`);
+      setRunStatus(`${selectedTest.label} started.`);
       setSelectedTest(null);
     } catch (error) {
       setRunStatus(`Error: ${error.message}`);
@@ -75,7 +123,7 @@ export default function App() {
   const openResults = async (test = activeResultTest) => {
     setActiveResultTest(test);
     setShowResults(true);
-    setResultsStatus(`Loading latest ${test.label} steps...`);
+    setResultsStatus(`Loading ${test.label}...`);
     setResultSteps([]);
     setResultSummary(null);
     setResultVideoUrl('');
@@ -92,9 +140,7 @@ export default function App() {
       setResultSteps(stepsData.steps);
       setResultSummary(summaryData.summary);
       setResultVideoUrl(summaryData.videoUrl);
-      setResultsStatus(
-        stepsData.steps.length ? '' : `No ${test.label} screenshots found yet. Run the test first.`
-      );
+      setResultsStatus(stepsData.steps.length ? '' : 'No screenshots yet.');
     } catch (error) {
       setResultsStatus(`Error: ${error.message}`);
     }
@@ -109,309 +155,169 @@ export default function App() {
     link.remove();
   };
 
+  const renderCategoryPanel = (id, title, tests) => (
+    <section className={`category-panel ${activePanel === id ? 'open' : ''}`} aria-label={title}>
+      <div className="category-inner">
+        {tests.map((test, index) => (
+          <article className="test-card" key={test.id} style={{ '--delay': `${index * 70}ms` }}>
+            <strong>{test.label}</strong>
+            <div className="card-actions">
+              <button type="button" onClick={() => openRunModePopup(test)} aria-label={`Run ${test.label}`}>
+                <Icon name="play" />
+              </button>
+              <button type="button" onClick={() => openResults(test)} aria-label={`View ${test.label}`}>
+                <Icon name="eye" />
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+
   return (
-    <main className="mx-auto my-10 w-[min(980px,92%)]">
-      <h1 className="m-0 text-4xl font-bold uppercase tracking-[0.06em] md:text-5xl">
-        STANDARD REGRESSION TEST
-      </h1>
-      <p className="mb-7 mt-2 text-slate-600">Automation Control Panel</p>
+    <main className="app-shell">
+      <section className="control-panel">
+        <header className="top-bar">
+          <div>
+            <p>Playwright</p>
+            <h1>Regression Tests</h1>
+          </div>
+          <div className="top-actions">
+            <label className="number-control">
+              <span>Items</span>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={itemCount}
+                onChange={(event) => {
+                  const nextValue = Number.parseInt(event.target.value, 10) || 1;
+                  setItemCount(Math.min(Math.max(nextValue, 1), 20));
+                }}
+              />
+            </label>
+            <button type="button" className="ghost-button" onClick={() => openResults(activeResultTest)}>
+              <Icon name="results" />
+              <span>Results</span>
+            </button>
+          </div>
+        </header>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_14px_30px_rgba(22,31,43,0.08)]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="m-0 text-2xl font-semibold">FIRST: SALES</h2>
-        </div>
-
-
-        <div className="mt-5 flex flex-wrap gap-3">
+        <div className="primary-actions">
           <button
             type="button"
-            onClick={() => selectPanel('sales')}
-            className={`rounded-lg px-4 py-2 font-semibold text-white transition-colors ${
-              showSalesCategories ? 'bg-teal-800' : 'bg-teal-700 hover:bg-teal-800'
-            }`}
+            className={`main-action ${activePanel === 'sales' ? 'active' : ''}`}
+            onClick={() => togglePanel('sales')}
           >
-            Run Sales Tests
+            <Icon name="sales" />
+            <span>Sales</span>
           </button>
           <button
             type="button"
-            onClick={() => selectPanel('addons')}
-            className={`rounded-lg px-4 py-2 font-semibold text-white transition-colors ${
-              showAddOns ? 'bg-indigo-800' : 'bg-indigo-700 hover:bg-indigo-800'
-            }`}
+            className={`main-action ${activePanel === 'addons' ? 'active' : ''}`}
+            onClick={() => togglePanel('addons')}
           >
-            Adds-On
-          </button>
-          <button
-            type="button"
-            onClick={openResults}
-            className="rounded-lg bg-slate-100 px-4 py-2 font-semibold text-slate-800 hover:bg-slate-200"
-          >
-            View Results
+            <Icon name="addons" />
+            <span>Adds-On</span>
           </button>
         </div>
 
-        <div
-          className={`grid transition-all duration-300 ease-out ${
-            showSalesCategories
-              ? 'mt-5 grid-rows-[1fr] opacity-100'
-              : 'mt-0 grid-rows-[0fr] opacity-0'
-          }`}
-        >
-          <div className="overflow-hidden">
-            <div className="border-t border-slate-200 pt-4">
-              <div
-                className={`rounded-xl border border-slate-200 bg-slate-50 p-4 transition-transform duration-300 ease-out ${
-                  showSalesCategories ? 'translate-y-0' : '-translate-y-2'
-                }`}
-              >
-              <h3 className="m-0 text-base font-semibold">Category</h3>
-              <div className="mt-3 flex flex-wrap gap-3">
-                {salesTests.map((test) => (
-                  <button
-                    key={test.id}
-                    type="button"
-                    onClick={() => openRunModePopup(test)}
-                    className="rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700"
-                  >
-                    {test.label}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {salesTests.map((test) => (
-                  <button
-                    key={`${test.id}-results`}
-                    type="button"
-                    onClick={() => openResults(test)}
-                    className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-200"
-                  >
-                    View {test.label}
-                  </button>
-                ))}
-              </div>
-              {runStatus && <p className="mt-3 text-sm text-slate-700">{runStatus}</p>}
-              </div>
-            </div>
-          </div>
-        </div>
+        {renderCategoryPanel('sales', 'Sales tests', salesTests)}
+        {renderCategoryPanel('addons', 'Add-on tests', addOnTests)}
 
-        <div
-          className={`grid transition-all duration-300 ease-out ${
-            showAddOns ? 'mt-5 grid-rows-[1fr] opacity-100' : 'mt-0 grid-rows-[0fr] opacity-0'
-          }`}
-        >
-          <div className="overflow-hidden">
-            <div className="border-t border-slate-200 pt-4">
-              <div
-                className={`rounded-xl border border-slate-200 bg-slate-50 p-4 transition-transform duration-300 ease-out ${
-                  showAddOns ? 'translate-y-0' : '-translate-y-2'
-                }`}
-              >
-              <h3 className="m-0 text-base font-semibold">Adds-On</h3>
-              <div className="mt-3 flex flex-wrap gap-3">
-                {addOnTests.map((test) => (
-                  <button
-                    key={test.id}
-                    type="button"
-                    onClick={() => openRunModePopup(test)}
-                    className="rounded-lg bg-indigo-700 px-4 py-2 font-semibold text-white hover:bg-indigo-800"
-                  >
-                    {test.label}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {addOnTests.map((test) => (
-                  <button
-                    key={`${test.id}-results`}
-                    type="button"
-                    onClick={() => openResults(test)}
-                    className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-200"
-                  >
-                    View {test.label}
-                  </button>
-                ))}
-              </div>
-              {runStatus && <p className="mt-3 text-sm text-slate-700">{runStatus}</p>}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {selectedTest && (
-          <div
-            className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="run-mode-title"
-          >
-            <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 id="run-mode-title" className="m-0 text-xl font-semibold">
-                    {selectedTest.label}
-                  </h3>
-                  <p className="mb-0 mt-1 text-sm text-slate-600">Choose how to run this test.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTest(null)}
-                  className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-xl leading-none text-slate-700 hover:bg-slate-200"
-                  aria-label="Close"
-                >
-                  x
-                </button>
-              </div>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => runSelectedTest('headed')}
-                  className="rounded-lg bg-teal-700 px-4 py-3 font-semibold text-white hover:bg-teal-800"
-                >
-                  Headed
-                </button>
-                <button
-                  type="button"
-                  onClick={() => runSelectedTest('ui')}
-                  className="rounded-lg bg-rose-700 px-4 py-3 font-semibold text-white hover:bg-rose-800"
-                >
-                  UI
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showResults && (
-          <div
-            className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/45 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="results-title"
-          >
-            <div className="print-results mx-auto my-6 w-full max-w-5xl rounded-xl border border-slate-200 bg-white p-5 shadow-2xl">
-              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-4">
-                <div>
-                  <h3 id="results-title" className="m-0 text-2xl font-semibold">
-                    {activeResultTest.label} Results
-                  </h3>
-                  <p className="mb-0 mt-1 text-sm text-slate-600">
-                    Step-by-step view from the latest saved screenshots.
-                  </p>
-                </div>
-                <div className="no-print flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={exportResultsToPdf}
-                    disabled={!resultSteps.length && !resultSummary?.modules?.length}
-                    className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-                  >
-                    Export PDF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowResults(false)}
-                    className="grid h-9 w-9 place-items-center rounded-lg bg-slate-100 text-xl leading-none text-slate-700 hover:bg-slate-200"
-                    aria-label="Close results"
-                  >
-                    x
-                  </button>
-                </div>
-              </div>
-
-              {resultsStatus && <p className="mt-4 text-sm text-slate-700">{resultsStatus}</p>}
-
-              <div className="mt-5 space-y-5">
-                {resultSteps.map((step, index) => (
-                  <article
-                    key={step.fileName}
-                    className="print-avoid overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
-                  >
-                    <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
-                      <span className="grid h-8 w-8 place-items-center rounded-full bg-teal-700 text-sm font-bold text-white">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <h4 className="m-0 text-base font-semibold text-slate-900">
-                          {step.title}
-                        </h4>
-                        <p className="m-0 text-sm text-slate-600">{step.description}</p>
-                      </div>
-                    </div>
-                    <img
-                      src={step.screenshotUrl}
-                      alt={step.title}
-                      className="block w-full bg-white"
-                      loading="lazy"
-                    />
-                  </article>
-                ))}
-
-                {resultSummary?.modules?.length > 0 && (
-                  <section className="print-avoid rounded-lg border border-slate-200 bg-white">
-                    <div className="border-b border-slate-200 px-4 py-3">
-                      <h4 className="m-0 text-base font-semibold text-slate-900">
-                        Module Document Numbers
-                      </h4>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-left text-sm">
-                        <thead className="bg-slate-50 text-slate-600">
-                          <tr>
-                            <th className="border-b border-slate-200 px-4 py-3 font-semibold">
-                              Module
-                            </th>
-                            <th className="border-b border-slate-200 px-4 py-3 font-semibold">
-                              Doc No
-                            </th>
-                            <th className="border-b border-slate-200 px-4 py-3 font-semibold">
-                              Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {resultSummary.modules.map((entry) => (
-                            <tr key={`${entry.module}-${entry.docNo}`}>
-                              <td className="border-b border-slate-100 px-4 py-3 font-medium text-slate-900">
-                                {entry.module}
-                              </td>
-                              <td className="border-b border-slate-100 px-4 py-3 text-slate-700">
-                                {entry.docNo || '-'}
-                              </td>
-                              <td className="border-b border-slate-100 px-4 py-3 text-slate-700">
-                                {entry.status}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
-                )}
-
-                {resultSummary?.status === 'success' && resultVideoUrl && (
-                  <section className="no-print overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
-                    <div className="border-b border-slate-800 px-4 py-3">
-                      <h4 className="m-0 text-base font-semibold text-white">
-                        Success Video Presentation
-                      </h4>
-                    </div>
-                    <video
-                      className="block w-full bg-black"
-                      src={resultVideoUrl}
-                      controls
-                      autoPlay
-                      muted
-                      loop
-                    />
-                  </section>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        {runStatus && <p className="status-line">{runStatus}</p>}
       </section>
+
+      {selectedTest && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="run-mode-title">
+          <div className="modal-card">
+            <div className="modal-header">
+              <h2 id="run-mode-title">{selectedTest.label}</h2>
+              <button type="button" onClick={() => setSelectedTest(null)} aria-label="Close">
+                <Icon name="close" />
+              </button>
+            </div>
+            <div className="mode-actions">
+              <button type="button" onClick={() => runSelectedTest('headed')}>
+                Headed
+              </button>
+              <button type="button" onClick={() => runSelectedTest('ui')}>
+                UI
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResults && (
+        <div className="results-backdrop" role="dialog" aria-modal="true" aria-labelledby="results-title">
+          <div className="print-results results-card">
+            <div className="results-header">
+              <div>
+                <h2 id="results-title">{activeResultTest.label}</h2>
+                <p>Results</p>
+              </div>
+              <div className="no-print results-actions">
+                <button
+                  type="button"
+                  onClick={exportResultsToPdf}
+                  disabled={!resultSteps.length && !resultSummary?.modules?.length}
+                >
+                  <Icon name="file" />
+                  <span>PDF</span>
+                </button>
+                <button type="button" onClick={() => setShowResults(false)} aria-label="Close results">
+                  <Icon name="close" />
+                </button>
+              </div>
+            </div>
+
+            {resultsStatus && <p className="results-status">{resultsStatus}</p>}
+
+            <div className="result-list">
+              {resultSteps.map((step, index) => (
+                <article key={step.fileName} className="print-avoid result-step">
+                  <div className="step-heading">
+                    <span>{index + 1}</span>
+                    <h3>{step.title}</h3>
+                  </div>
+                  <img src={step.screenshotUrl} alt={step.title} loading="lazy" />
+                </article>
+              ))}
+
+              {resultSummary?.modules?.length > 0 && (
+                <section className="print-avoid module-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Module</th>
+                        <th>Doc No</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resultSummary.modules.map((entry) => (
+                        <tr key={`${entry.module}-${entry.docNo}`}>
+                          <td>{entry.module}</td>
+                          <td>{entry.docNo || '-'}</td>
+                          <td>{entry.status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </section>
+              )}
+
+              {resultSummary?.status === 'success' && resultVideoUrl && (
+                <section className="no-print result-video">
+                  <video src={resultVideoUrl} controls autoPlay muted loop />
+                </section>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,5 +1,5 @@
 const { expect } = require('@playwright/test');
-const { BasePage } = require('./BasePage');
+const { BasePage } = require('../base/BasePage');
 
 class BusinessPartnerPopup extends BasePage {
   async expectLookupReady() {
@@ -19,7 +19,7 @@ class BusinessPartnerPopup extends BasePage {
 
     const okButton = await this.findInAllFrames("a.button[onclick*=\"editTableRow('T1')\"]");
     await okButton.click();
-    await this.page.waitForEvent('close', { timeout: 10000 }).catch(() => {});
+    await this.page.waitForEvent('close', { timeout: 5000 }).catch(() => {});
     return selectedCustomerCode;
   }
 
@@ -40,7 +40,7 @@ class BusinessPartnerPopup extends BasePage {
 
         const okButton = await this.findInAllFrames('a.button:has-text("OK")', 20);
         await okButton.click();
-        await this.page.waitForEvent('close', { timeout: 10000 }).catch(() => {});
+        await this.page.waitForEvent('close', { timeout: 5000 }).catch(() => {});
         return code;
       } catch (e) {
         continue;
