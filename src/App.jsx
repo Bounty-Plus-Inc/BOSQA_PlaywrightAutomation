@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const salesTests = [
   {
@@ -63,6 +63,17 @@ const icons = {
       <path d="M8 13h8M8 17h5" />
     </svg>
   ),
+  sun: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+  ),
+  moon: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20.4 15.6A8 8 0 0 1 8.4 3.6a8.5 8.5 0 1 0 12 12Z" />
+    </svg>
+  ),
   close: (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M18 6 6 18M6 6l12 12" />
@@ -75,6 +86,14 @@ function Icon({ name }) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'light';
+
+    const storedTheme = window.localStorage.getItem('theme');
+    if (storedTheme === 'light' || storedTheme === 'dark') return storedTheme;
+
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
   const [activePanel, setActivePanel] = useState('');
   const [selectedTest, setSelectedTest] = useState(null);
   const [runStatus, setRunStatus] = useState('');
@@ -85,6 +104,11 @@ export default function App() {
   const [resultVideoUrl, setResultVideoUrl] = useState('');
   const [activeResultTest, setActiveResultTest] = useState(allTests[0]);
   const [itemCount, setItemCount] = useState(1);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem('theme', theme);
+  }, [theme]);
 
   const togglePanel = (panel) => {
     setActivePanel((current) => (current === panel ? '' : panel));
@@ -180,8 +204,8 @@ export default function App() {
       <section className="control-panel">
         <header className="top-bar">
           <div>
-            <p>Playwright</p>
-            <h1>Regression Tests</h1>
+            <p>BOUNTY PLUS INC.</p>
+            <p>REGRESSION AUTOMATION</p>
           </div>
           <div className="top-actions">
             <label className="number-control">
@@ -200,6 +224,15 @@ export default function App() {
             <button type="button" className="ghost-button" onClick={() => openResults(activeResultTest)}>
               <Icon name="results" />
               <span>Results</span>
+            </button>
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={() => setTheme((current) => (current === 'light' ? 'dark' : 'light'))}
+              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            >
+              <Icon name={theme === 'light' ? 'moon' : 'sun'} />
             </button>
           </div>
         </header>
