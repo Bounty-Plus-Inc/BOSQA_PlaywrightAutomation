@@ -219,6 +219,6 @@ Keep specs readable. A future teammate should be able to scan the test and under
 - Keep transaction form logic in `tests/pages/transactions/`.
 - Keep approval-specific logic in `tests/pages/approvals/`.
 - Use `recordModuleDocNo()` when a scenario creates or approves a document.
+- Use `readCurrentDocNo(pageOrPageObject)` or `recordCurrentDocNo(moduleName, pageOrPageObject, status, testId)` from `tests/helpers/docNoReader.js` when a module has a standard `df_docno` field.
 - Keep screenshot names stable because `vite.config.js` depends on them.
 - If the dashboard can run it, the spec must be registered in both `testSpecs` and the correct array in `src/App.jsx`.
-

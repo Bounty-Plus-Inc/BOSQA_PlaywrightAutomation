@@ -1,5 +1,6 @@
 const { expect } = require('@playwright/test');
 const { BasePage } = require('../base/BasePage');
+const { readCurrentDocNo } = require('../../helpers/docNoReader');
 
 class DeliveryOrderPage extends BasePage {
   async expectLoaded() {
@@ -387,8 +388,7 @@ class DeliveryOrderPage extends BasePage {
   }
 
   async readDocumentNo() {
-    const docNo = await this.findInAllFrames('input#df_docno[name="df_docno"]', 20);
-    return docNo.inputValue();
+    return readCurrentDocNo(this);
   }
 
   async expectShipToAddressFilled() {

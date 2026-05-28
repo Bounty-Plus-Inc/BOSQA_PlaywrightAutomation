@@ -272,6 +272,9 @@ export default function App() {
               </button>
             </div>
             <div className="mode-actions">
+              <button type="button" onClick={() => runSelectedTest('headless(On Testing Phase)')}>
+                Headless
+              </button>
               <button type="button" onClick={() => runSelectedTest('headed')}>
                 Headed
               </button>

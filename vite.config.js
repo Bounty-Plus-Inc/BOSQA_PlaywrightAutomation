@@ -444,7 +444,7 @@ export default defineConfig({
             return;
           }
 
-          const allowedModes = new Set(['headed', 'ui']);
+          const allowedModes = new Set(['headless(On Testing Phase)', 'headed', 'ui']);
           const spec = payload.spec;
           const mode = payload.mode;
           const itemCount = Math.min(
@@ -462,8 +462,13 @@ export default defineConfig({
             return;
           }
 
-          const modeArg = mode === 'ui' ? '--ui' : '--headed';
-          const child = spawn('npx', ['playwright', 'test', spec, modeArg], {
+          const modeArgs =
+            mode === 'ui'
+              ? ['--ui']
+              : mode === 'headed'
+                ? ['--headed']
+                : [];
+          const child = spawn('npx', ['playwright', 'test', spec, ...modeArgs], {
             cwd: process.cwd(),
             env: {
               ...process.env,

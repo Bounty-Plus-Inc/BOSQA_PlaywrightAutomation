@@ -430,7 +430,7 @@ a {
 
 .mode-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-top: 24px;
 }
@@ -448,6 +448,11 @@ a {
 
 .mode-actions button:nth-child(2) {
   background: var(--accent-gradient-alt);
+}
+
+.mode-actions button:nth-child(3) {
+  background: var(--soft-bg);
+  color: var(--accent);
 }
 
 .results-backdrop {

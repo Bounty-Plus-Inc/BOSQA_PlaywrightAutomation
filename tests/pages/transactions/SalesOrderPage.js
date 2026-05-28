@@ -2,6 +2,7 @@ const { expect } = require('@playwright/test');
 const { BasePage } = require('../base/BasePage');
 const { BusinessPartnerPopup } = require('../popups/BusinessPartnerPopup');
 const { ItemPopup } = require('../popups/ItemPopup');
+const { readCurrentDocNo } = require('../../helpers/docNoReader');
 
 class SalesOrderPage extends BasePage {
   async expectCustomerLabelVisible() {
@@ -304,7 +305,7 @@ class SalesOrderPage extends BasePage {
   async readDocumentMemory() {
     return {
       bpCode: await (await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]')).inputValue(),
-      docNo: await (await this.findInAllFrames('input#df_docno[name="df_docno"]')).inputValue()
+      docNo: await readCurrentDocNo(this)
     };
   }
 
