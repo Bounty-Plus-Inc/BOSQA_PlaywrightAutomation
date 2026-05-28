@@ -17,7 +17,7 @@ class MainMenuPage extends BasePage {
     const salesMainTab = await this.findInAllFrames("a[onclick*=\"selectTab('SALES')\"]", 10);
     await salesMainTab.click();
 
-    const creditLimitSubTab = await this.findInAllFrames('a#subtab110.5', 20).catch(() => null);
+    const creditLimitSubTab = await this.findInAllFrames('a#subtab110.5', 6).catch(() => null);
     if (creditLimitSubTab) {
       await creditLimitSubTab.hover();
     }
@@ -43,7 +43,7 @@ class MainMenuPage extends BasePage {
     const salesMainTab = await this.findInAllFrames("a[onclick*=\"selectTab('SALES')\"]", 10);
     await salesMainTab.click();
 
-    const creditLimitSubTab = await this.findInAllFrames('a#subtab110.5', 20).catch(() => null);
+    const creditLimitSubTab = await this.findInAllFrames('a#subtab110.5', 6).catch(() => null);
     if (creditLimitSubTab) {
       await creditLimitSubTab.hover();
     }
