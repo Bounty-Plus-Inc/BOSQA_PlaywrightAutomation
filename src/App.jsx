@@ -300,8 +300,7 @@ export default function App() {
                   onClick={exportResultsToPdf}
                   disabled={!resultSteps.length && !resultSummary?.modules?.length}
                 >
-                  <Icon name="file" />
-                  <span>PDF</span>
+                  <span>Download PDF Template</span>
                 </button>
                 <button type="button" onClick={() => setShowResults(false)} aria-label="Close results">
                   <Icon name="close" />

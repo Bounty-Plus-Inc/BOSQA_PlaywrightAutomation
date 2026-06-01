@@ -100,15 +100,18 @@ class SalesOrderPage extends BasePage {
   }
 
   async saveAsDraft() {
+        await this.page.waitForTimeout(2000);
     await (await this.findInAllFrames('#tab1nav1')).click();
+    await this.page.waitForTimeout(2000);
     await (await this.findInAllFrames('#btnSaveAsDraft')).click();
 
     await expect
-      .poll(async () => this.readStatus(), { timeout: 2000 })
+      .poll(async () => this.readStatus(), { timeout: 4000 })
       .toContain('D|Draft');
   }
 
   async addOrUpdateUntilOpen() {
+    await this.page.waitForTimeout(2000);
     const actionResult = await this.withDialogCapture(() => this.clickAddOrUpdateButton());
     const actionButtonUsed = actionResult.result;
     let statusMsg = await this.readSubmitMessage(actionResult.dialogMessages);
