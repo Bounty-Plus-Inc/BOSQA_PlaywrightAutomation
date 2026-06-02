@@ -13,11 +13,11 @@ const {
 test('Delivery Order', async ({ page }) => {
   test.setTimeout(180000);
 
-  const testId = 'delivery-order';
+  const testId = 'sales-delivery-order';
   const testName = 'delivery order';
   const bpCode = process.env.BPI_DELIVERY_BPCODE || '10000010';
   const salesOrderDocNo =
-    process.env.BPI_DELIVERY_SODOCNO || getModuleDocNo('Sales Order', 'sales-standard');
+    process.env.BPI_DELIVERY_SODOCNO || getModuleDocNo('Sales Order', 'sales-so-with-credit-limit');
   const loginPage = new LoginPage(page);
   const menu = new MainMenuPage(page);
   const deliveryOrder = new DeliveryOrderPage(page);

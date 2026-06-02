@@ -13,6 +13,7 @@ const {
 test('SO with Credit Limit', async ({ page }) => {
   test.setTimeout(240000);
 
+  const testId = 'sales-so-with-credit-limit';
   const testName = 'sales standard process';
   const salesBpCode = process.env.BPI_SALES_BPCODE || '10000010';
   const salesItemCode = process.env.BPI_SALES_ITEMCODE || '10000002';
@@ -25,7 +26,7 @@ test('SO with Credit Limit', async ({ page }) => {
   const menu = new MainMenuPage(page);
   const salesOrder = new SalesOrderPage(page);
   const creditLimit = new CreditLimitPage(page);
-  startRunSummary('sales-standard', 'SO with Credit Limit');
+  startRunSummary(testId, 'SO with Credit Limit');
 
   const runCreditLimitChecking = async (memory) => {
     await test.step('CREDIT LIMIT STANDARD', async () => {
@@ -38,7 +39,7 @@ test('SO with Credit Limit', async ({ page }) => {
           await takeStepScreenshot(page, testName, '08_CREDIT_LIMIT_STANDARD');
         }
       });
-      recordModuleDocNo('Credit Limit Checking', memory.docNo, 'Approved');
+      recordModuleDocNo('Credit Limit Checking', memory.docNo, 'Approved', testId);
       await takeStepScreenshot(page, testName, '09_CREDIT_LIMIT_APPROVED');
     });
 
@@ -54,7 +55,7 @@ test('SO with Credit Limit', async ({ page }) => {
           await takeStepScreenshot(page, testName, '10_CREDIT_LIMIT_APPROVAL');
         }
       });
-      recordModuleDocNo('Credit Limit Approval', memory.docNo, 'Approved');
+      recordModuleDocNo('Credit Limit Approval', memory.docNo, 'Approved', testId);
       await takeStepScreenshot(page, testName, '11_CREDIT_LIMIT_APPROVAL_DONE');
     });
   };
@@ -97,24 +98,24 @@ test('SO with Credit Limit', async ({ page }) => {
 
     if (!addOutcome.isCreditLimitBlocked) {
       await takeStepScreenshot(page, testName, 'ZZ_Status_Not_Open_Latest');
-      finishRunSummary('not-open');
+      finishRunSummary('not-open', testId);
       return;
     }
 
     const memory = await salesOrder.readDocumentMemory();
-    recordModuleDocNo('Sales Order', memory.docNo, 'Credit Limit Blocked');
+    recordModuleDocNo('Sales Order', memory.docNo, 'Credit Limit Blocked', testId);
     console.log(
       `[CREDIT LIMIT STANDARD] Memory saved -> bpCode: ${memory.bpCode}, docNo: ${memory.docNo}`
     );
 
     await takeStepScreenshot(page, testName, 'ZZ_Credit_Limit_Blocking_Message');
     await runCreditLimitChecking(memory);
-    finishRunSummary('success');
+    finishRunSummary('success', testId);
     return;
   }
 
   const memory = await salesOrder.readDocumentMemory();
-  recordModuleDocNo('Sales Order', memory.docNo, 'Open');
-  finishRunSummary('success');
+  recordModuleDocNo('Sales Order', memory.docNo, 'Open', testId);
+  finishRunSummary('success', testId);
   await takeStepScreenshot(page, testName, '07_Status_Open_After_Add');
 });

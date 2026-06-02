@@ -12,7 +12,7 @@ const {
 test('Approval', async ({ page }) => {
   test.setTimeout(120000);
 
-  const testId = 'approval';
+  const testId = 'admin-approval';
   const testName = 'approval';
   const loginPage = new LoginPage(page);
   const menu = new MainMenuPage(page);

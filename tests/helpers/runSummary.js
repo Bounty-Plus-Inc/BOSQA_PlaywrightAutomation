@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-function getSummaryPath(testId = 'sales-standard') {
+function getSummaryPath(testId = 'sales-so-with-credit-limit') {
   return path.resolve(process.cwd(), 'test-results', `${testId}-summary.json`);
 }
 
@@ -9,20 +9,20 @@ function ensureSummaryDir(testId) {
   fs.mkdirSync(path.dirname(getSummaryPath(testId)), { recursive: true });
 }
 
-function writeSummary(summary, testId = summary.testId || 'sales-standard') {
+function writeSummary(summary, testId = summary.testId || 'sales-so-with-credit-limit') {
   ensureSummaryDir(testId);
   fs.writeFileSync(getSummaryPath(testId), JSON.stringify(summary, null, 2));
 }
 
-function readSummary(testId = 'sales-standard') {
+function readSummary(testId = 'sales-so-with-credit-limit') {
   const summaryPath = getSummaryPath(testId);
   if (!fs.existsSync(summaryPath)) {
     return {
       testId,
       title:
-        testId === 'delivery-order'
+        testId === 'sales-delivery-order'
           ? 'Delivery Order'
-          : testId === 'approval'
+          : testId === 'admin-approval'
             ? 'Approval'
             : 'SO with Credit Limit',
       status: 'running',
@@ -33,7 +33,7 @@ function readSummary(testId = 'sales-standard') {
   return JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
 }
 
-function startRunSummary(testId = 'sales-standard', title = 'SO with Credit Limit') {
+function startRunSummary(testId = 'sales-so-with-credit-limit', title = 'SO with Credit Limit') {
   writeSummary({
     testId,
     title,
@@ -43,7 +43,7 @@ function startRunSummary(testId = 'sales-standard', title = 'SO with Credit Limi
   }, testId);
 }
 
-function recordModuleDocNo(moduleName, docNo, status = 'Completed', testId = 'sales-standard') {
+function recordModuleDocNo(moduleName, docNo, status = 'Completed', testId = 'sales-so-with-credit-limit') {
   const summary = readSummary(testId);
   const modules = summary.modules.filter((entry) => entry.module !== moduleName);
   modules.push({
@@ -60,7 +60,7 @@ function recordModuleDocNo(moduleName, docNo, status = 'Completed', testId = 'sa
   }, testId);
 }
 
-function finishRunSummary(status = 'success', testId = 'sales-standard') {
+function finishRunSummary(status = 'success', testId = 'sales-so-with-credit-limit') {
   const summary = readSummary(testId);
   writeSummary({
     ...summary,
@@ -70,7 +70,7 @@ function finishRunSummary(status = 'success', testId = 'sales-standard') {
   }, testId);
 }
 
-function getModuleDocNo(moduleName, testId = 'sales-standard') {
+function getModuleDocNo(moduleName, testId = 'sales-so-with-credit-limit') {
   const summary = readSummary(testId);
   return summary.modules.find((entry) => entry.module === moduleName)?.docNo || '';
 }

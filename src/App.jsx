@@ -1,31 +1,5 @@
 import { useEffect, useState } from 'react';
 
-const salesTests = [
-  {
-    id: 'sales-standard',
-    label: 'SO with Credit Limit',
-    spec: 'tests/sales/standard.spec.js',
-    resultId: 'sales-standard'
-  },
-  {
-    id: 'delivery-order',
-    label: 'Delivery Order',
-    spec: 'tests/sales/delivery-order.spec.js',
-    resultId: 'delivery-order'
-  }
-];
-
-const addOnTests = [
-  {
-    id: 'approval',
-    label: 'Approval',
-    spec: 'tests/admin/approval.spec.js',
-    resultId: 'approval'
-  }
-];
-
-const allTests = [...salesTests, ...addOnTests];
-
 const icons = {
   sales: (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -63,6 +37,11 @@ const icons = {
       <path d="M8 13h8M8 17h5" />
     </svg>
   ),
+  menu: (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  ),
   sun: (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="4" />
@@ -82,7 +61,7 @@ const icons = {
 };
 
 function Icon({ name }) {
-  return <span className="icon">{icons[name]}</span>;
+  return <span className="icon">{icons[name] || icons.file}</span>;
 }
 
 export default function App() {
@@ -95,20 +74,53 @@ export default function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
   const [activePanel, setActivePanel] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedTest, setSelectedTest] = useState(null);
   const [runStatus, setRunStatus] = useState('');
-  const [showResults, setShowResults] = useState(false);
+  const [catalogStatus, setCatalogStatus] = useState('Loading tests...');
+  const [testModules, setTestModules] = useState([]);
   const [resultsStatus, setResultsStatus] = useState('');
   const [resultSteps, setResultSteps] = useState([]);
   const [resultSummary, setResultSummary] = useState(null);
   const [resultVideoUrl, setResultVideoUrl] = useState('');
-  const [activeResultTest, setActiveResultTest] = useState(allTests[0]);
+  const [activeResultTest, setActiveResultTest] = useState(null);
   const [itemCount, setItemCount] = useState(1);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     window.localStorage.setItem('theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadTestCatalog = async () => {
+      try {
+        const response = await fetch('/api/test-catalog');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Unable to load tests');
+
+        if (!isMounted) return;
+
+        const modules = data.modules || [];
+        const tests = modules.flatMap((module) => module.tests || []);
+        const firstPreviewTest = tests.find((test) => test.hasResultDetails) || tests[0] || null;
+        setTestModules(modules);
+        setActivePanel((current) => current || modules[0]?.id || '');
+        setActiveResultTest((current) => current || firstPreviewTest);
+        setCatalogStatus(tests.length ? '' : 'No tests found.');
+      } catch (error) {
+        if (!isMounted) return;
+        setCatalogStatus(`Error: ${error.message}`);
+      }
+    };
+
+    loadTestCatalog();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const togglePanel = (panel) => {
     setActivePanel((current) => (current === panel ? '' : panel));
@@ -145,8 +157,9 @@ export default function App() {
   };
 
   const openResults = async (test = activeResultTest) => {
+    if (!test?.hasResultDetails) return;
+
     setActiveResultTest(test);
-    setShowResults(true);
     setResultsStatus(`Loading ${test.label}...`);
     setResultSteps([]);
     setResultSummary(null);
@@ -171,6 +184,8 @@ export default function App() {
   };
 
   const exportResultsToPdf = () => {
+    if (!activeResultTest) return;
+
     const link = document.createElement('a');
     link.href = `/api/test-pdf?testId=${encodeURIComponent(activeResultTest.resultId)}`;
     link.download = `${activeResultTest.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-results.pdf`;
@@ -179,29 +194,144 @@ export default function App() {
     link.remove();
   };
 
-  const renderCategoryPanel = (id, title, tests) => (
-    <section className={`category-panel ${activePanel === id ? 'open' : ''}`} aria-label={title}>
-      <div className="category-inner">
-        {tests.map((test, index) => (
-          <article className="test-card" key={test.id} style={{ '--delay': `${index * 70}ms` }}>
-            <strong>{test.label}</strong>
-            <div className="card-actions">
-              <button type="button" onClick={() => openRunModePopup(test)} aria-label={`Run ${test.label}`}>
-                <Icon name="play" />
-              </button>
-              <button type="button" onClick={() => openResults(test)} aria-label={`View ${test.label}`}>
-                <Icon name="eye" />
-              </button>
+  const renderPreview = () => (
+    <section className="print-results preview-panel" aria-label="Test preview">
+      <div className="results-header">
+        <div>
+          <h2 id="results-title">{activeResultTest?.label || 'Results'}</h2>
+          <p>{resultSummary?.status || 'Preview'}</p>
+        </div>
+        <div className="no-print results-actions">
+          <button
+            type="button"
+            onClick={() => openResults(activeResultTest)}
+            disabled={!activeResultTest?.hasResultDetails}
+          >
+            <Icon name="results" />
+            <span>Refresh</span>
+          </button>
+          <button
+            type="button"
+            onClick={exportResultsToPdf}
+            disabled={!resultSteps.length && !resultSummary?.modules?.length}
+          >
+            <span>PDF</span>
+          </button>
+        </div>
+      </div>
+
+      {resultsStatus && <p className="results-status">{resultsStatus}</p>}
+
+      <div className="result-list">
+        {resultSummary?.modules?.length > 0 && (
+          <section className="print-avoid module-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Doc No</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultSummary.modules.map((entry) => (
+                  <tr key={`${entry.module}-${entry.docNo}`}>
+                    <td>{entry.module}</td>
+                    <td>{entry.docNo || '-'}</td>
+                    <td>{entry.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        )}
+
+        {resultSteps.map((step, index) => (
+          <article key={step.fileName} className="print-avoid result-step">
+            <div className="step-heading">
+              <span>{index + 1}</span>
+              <h3>{step.title}</h3>
             </div>
+            <img src={step.screenshotUrl} alt={step.title} loading="lazy" />
           </article>
         ))}
+
+        {resultVideoUrl && (
+          <section className="no-print result-video">
+            <video src={resultVideoUrl} controls autoPlay muted loop />
+          </section>
+        )}
       </div>
     </section>
   );
 
   return (
-    <main className="app-shell">
-      <section className="control-panel">
+    <main className={`app-shell ${isSidebarOpen ? '' : 'sidebar-collapsed'}`}>
+      <aside className="module-sidebar" aria-label="Test modules">
+        <div className="sidebar-header">
+          <div>
+            <p>BOUNTY PLUS INC.</p>
+            <strong>REGRESSION</strong>
+          </div>
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={() => setIsSidebarOpen((current) => !current)}
+            aria-label={isSidebarOpen ? 'Hide modules' : 'Show modules'}
+            title={isSidebarOpen ? 'Hide modules' : 'Show modules'}
+          >
+            <Icon name={isSidebarOpen ? 'close' : 'menu'} />
+          </button>
+        </div>
+
+        <nav className="module-nav">
+          {testModules.map((module) => (
+            <section className="module-group" key={module.id}>
+              <button
+                type="button"
+                className={`module-button ${activePanel === module.id ? 'active' : ''}`}
+                onClick={() => togglePanel(module.id)}
+                title={module.label}
+              >
+                <Icon name={module.icon} />
+                <span>{module.label}</span>
+              </button>
+
+              <div className={`module-tests ${activePanel === module.id ? 'open' : ''}`}>
+                {(module.tests || []).map((test) => (
+                  <article className="sidebar-test" key={test.id}>
+                    <button
+                      type="button"
+                      className="test-name-button"
+                      onClick={() => openResults(test)}
+                      disabled={!test.hasResultDetails}
+                    >
+                      {test.label}
+                    </button>
+                    <div className="card-actions">
+                      <button type="button" onClick={() => openRunModePopup(test)} aria-label={`Run ${test.label}`}>
+                        <Icon name="play" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openResults(test)}
+                        aria-label={`View ${test.label}`}
+                        disabled={!test.hasResultDetails}
+                      >
+                        <Icon name="eye" />
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
+        </nav>
+
+        {catalogStatus && <p className="status-line">{catalogStatus}</p>}
+      </aside>
+
+      <section className="workspace">
         <header className="top-bar">
           <div>
             <p>BOUNTY PLUS INC.</p>
@@ -221,7 +351,12 @@ export default function App() {
                 }}
               />
             </label>
-            <button type="button" className="ghost-button" onClick={() => openResults(activeResultTest)}>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => openResults(activeResultTest)}
+              disabled={!activeResultTest?.hasResultDetails}
+            >
               <Icon name="results" />
               <span>Results</span>
             </button>
@@ -237,29 +372,8 @@ export default function App() {
           </div>
         </header>
 
-        <div className="primary-actions">
-          <button
-            type="button"
-            className={`main-action ${activePanel === 'sales' ? 'active' : ''}`}
-            onClick={() => togglePanel('sales')}
-          >
-            <Icon name="sales" />
-            <span>Sales</span>
-          </button>
-          <button
-            type="button"
-            className={`main-action ${activePanel === 'addons' ? 'active' : ''}`}
-            onClick={() => togglePanel('addons')}
-          >
-            <Icon name="addons" />
-            <span>Adds-On</span>
-          </button>
-        </div>
-
-        {renderCategoryPanel('sales', 'Sales tests', salesTests)}
-        {renderCategoryPanel('addons', 'Add-on tests', addOnTests)}
-
         {runStatus && <p className="status-line">{runStatus}</p>}
+        {renderPreview()}
       </section>
 
       {selectedTest && (
@@ -281,74 +395,6 @@ export default function App() {
               <button type="button" onClick={() => runSelectedTest('ui')}>
                 UI
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showResults && (
-        <div className="results-backdrop" role="dialog" aria-modal="true" aria-labelledby="results-title">
-          <div className="print-results results-card">
-            <div className="results-header">
-              <div>
-                <h2 id="results-title">{activeResultTest.label}</h2>
-                <p>Results</p>
-              </div>
-              <div className="no-print results-actions">
-                <button
-                  type="button"
-                  onClick={exportResultsToPdf}
-                  disabled={!resultSteps.length && !resultSummary?.modules?.length}
-                >
-                  <span>Download PDF Template</span>
-                </button>
-                <button type="button" onClick={() => setShowResults(false)} aria-label="Close results">
-                  <Icon name="close" />
-                </button>
-              </div>
-            </div>
-
-            {resultsStatus && <p className="results-status">{resultsStatus}</p>}
-
-            <div className="result-list">
-              {resultSteps.map((step, index) => (
-                <article key={step.fileName} className="print-avoid result-step">
-                  <div className="step-heading">
-                    <span>{index + 1}</span>
-                    <h3>{step.title}</h3>
-                  </div>
-                  <img src={step.screenshotUrl} alt={step.title} loading="lazy" />
-                </article>
-              ))}
-
-              {resultSummary?.modules?.length > 0 && (
-                <section className="print-avoid module-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Module</th>
-                        <th>Doc No</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {resultSummary.modules.map((entry) => (
-                        <tr key={`${entry.module}-${entry.docNo}`}>
-                          <td>{entry.module}</td>
-                          <td>{entry.docNo || '-'}</td>
-                          <td>{entry.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </section>
-              )}
-
-              {resultSummary?.status === 'success' && resultVideoUrl && (
-                <section className="no-print result-video">
-                  <video src={resultVideoUrl} controls autoPlay muted loop />
-                </section>
-              )}
             </div>
           </div>
         </div>

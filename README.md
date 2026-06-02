@@ -28,7 +28,7 @@ npm run dev
 
 For adding new scenarios, page objects, dashboard entries, screenshots, and result metadata, see:
 
-`docs/developer/tutorial.txt`
+`docs/developer/tutorial.md`
 
 ## Environment
 

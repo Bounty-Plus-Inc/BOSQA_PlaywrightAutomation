@@ -1,0 +1,159 @@
+export const testResults = {
+  'sales-so-with-credit-limit': {
+    title: 'SO with Credit Limit',
+    screenshotsDir: 'test-results/screenshots/sales_standard_process',
+    steps: {
+      '00_SalesOrder_Page_Opened.png': {
+        title: 'Sales Order Module Opened',
+        description: 'The test reached the sales order page and the form was ready to use.'
+      },
+      '01_Customer_Label_Visible.png': {
+        title: 'Customer field confirmed',
+        description: 'The customer area appeared, confirming the page loaded correctly.'
+      },
+      '02_BP_Code_Returned.png': {
+        title: 'Customer selected',
+        description: 'A customer was chosen from the lookup and returned to the order form.'
+      },
+      '03_DocSeries_Selected.png': {
+        title: 'Document series selected',
+        description: 'The order was assigned to the expected document series.'
+      },
+      '01_BP_Selected.png': {
+        title: 'Business partner updated',
+        description: 'The business partner selection was completed successfully.'
+      },
+      '04_Item_Updated.png': {
+        title: 'Item added to the order',
+        description: 'The item, price, and business center were entered and updated.'
+      },
+      '05_Header_Details_Filled.png': {
+        title: 'Header details completed',
+        description: 'Required order header details were filled in.'
+      },
+      '06_Status_Draft.png': {
+        title: 'Order saved as draft',
+        description: 'The order was saved and confirmed in draft status.'
+      },
+      '07_Status_Open_After_Add.png': {
+        title: 'Order opened',
+        description: 'The order was submitted and moved to open status.'
+      },
+      'ZZ_Credit_Limit_Blocking_Message.png': {
+        title: 'Credit limit review needed',
+        description: 'The order could not open yet because it requires credit limit checking.'
+      },
+      'ZZ_Status_Not_Open_Latest.png': {
+        title: 'Order did not open',
+        description: 'The latest status was captured because the order did not move to open status.'
+      },
+      '08_CREDIT_LIMIT_STANDARD.png': {
+        title: 'Credit limit row selected',
+        description:
+          'The matching Sales Order was visible in the result table, selected, and marked Approved.'
+      },
+      '09_CREDIT_LIMIT_APPROVED.png': {
+        title: 'Credit limit approved',
+        description:
+          'The matching Sales Order was found, selected, approved, added successfully, and confirmed as Open.'
+      },
+      '10_CREDIT_LIMIT_APPROVAL.png': {
+        title: 'Credit limit approval row selected',
+        description:
+          'The approval page was filtered by customer, then the matching Sales Order was selected.'
+      },
+      '11_CREDIT_LIMIT_APPROVAL_DONE.png': {
+        title: 'Credit limit approval completed',
+        description:
+          'The matching Sales Order was approved from Credit Limit Approval and saved successfully.'
+      }
+
+    }
+  },
+  'sales-delivery-order': {
+    title: 'Delivery Order',
+    screenshotsDir: 'test-results/screenshots/delivery_order',
+    steps: {
+      '00_DELIVERY_ORDER_OPENED.png': {
+        title: 'Delivery order screen opened',
+        description: 'The Delivery Order standard transaction module opened successfully.'
+      },
+      '01_DELIVERY_BP_COPY_FROM_READY.png': {
+        title: 'Business partner entered',
+        description:
+          'The BP Code was entered and the Copy From button was visible before opening source documents.'
+      },
+      '02_DELIVERY_SALES_ORDERS_POPUP.png': {
+        title: 'Sales Orders popup opened',
+        description:
+          'The Copy From menu was opened and Sales Orders was selected, opening the source document popup.'
+      },
+      '03_DELIVERY_SO_HEADER_SELECTED.png': {
+        title: 'Sales Order header selected',
+        description:
+          'The Choose button was visible and the matching Sales Order header row was selected in the popup.'
+      },
+      '04_DELIVERY_SO_ITEMS_LOADED.png': {
+        title: 'Sales Order items loaded',
+        description:
+          'The selected Sales Order populated the item table in the popup before item selection.'
+      },
+      '05_DELIVERY_SO_ITEMS_SELECTED.png': {
+        title: 'Sales Order items selected',
+        description:
+          'The copied Sales Order item checkbox was selected before finishing the popup.'
+      },
+      '06_DELIVERY_ITEMS_COPIED_TO_MAIN.png': {
+        title: 'Delivery Order line populated',
+        description:
+          'The popup finished and the Delivery Order line item code was populated on the main form.'
+      },
+      '07_DELIVERY_DOCSERIES_PRIMARY.png': {
+        title: 'Primary document series selected',
+        description: 'The Delivery Order document series was changed to Primary.'
+      },
+      '08_DELIVERY_INV_DEL_DATE_TODAY.png': {
+        title: 'Invoice delivery date selected',
+        description:
+          'The General (UDF) tab was opened and the invoice delivery date calendar selected Today.'
+      },
+      '09_DELIVERY_SHIP_TO_ADDRESS_FILLED.png': {
+        title: 'Logistics details completed',
+        description:
+          'The Logistics tab was opened, SHIP TO and DELIVERY were selected, and the ship-to address was populated.'
+      },
+      '10_DELIVERY_TRUCKER_AND_PLATE_SELECTED.png': {
+        title: 'Trucker and plate selected',
+        description:
+          'The General (UDF) tab was reopened, the trucker code lookup selected 000, and the plate number lookup selected the first row.'
+      },
+      '11_DELIVERY_SAVED_AS_DRAFT.png': {
+        title: 'Delivery Order saved as draft',
+        description: 'The Delivery Order was saved as draft and the page reloaded with draft status.'
+      }
+    }
+  },
+  'admin-approval': {
+    title: 'Approval',
+    screenshotsDir: 'test-results/screenshots/approval',
+    steps: {
+      '00_APPROVAL_PAGE_OPENED.png': {
+        title: 'Transaction Approval opened',
+        description:
+          'The Admin tab was opened, Approval was hovered, and Transaction Approval loaded successfully.'
+      },
+      '01_APPROVAL_ROW_SELECTED.png': {
+        title: 'Approval rows selected',
+        description:
+          'The Transaction Approval list was filtered, Approved was selected, and the table select-all checkbox was checked.'
+      },
+      '02_APPROVAL_SUCCESS_OPEN.png': {
+        title: 'Success for Approval Stage',
+        description:
+          'The transaction was added successfully and the document status is Open and uneditable.'
+      }
+    }
+  }
+
+  
+};

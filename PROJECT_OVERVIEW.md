@@ -86,15 +86,15 @@ Endpoints:
 
 - `POST /api/run-test`
   - accepts a spec and mode
-  - currently allows only `tests/sales/standard.spec.js`
+  - currently allows only `tests/sales/so-with-credit-limit.spec.js`
   - currently allows only `headed` and `ui`
   - launches `npx playwright test <spec> --headed` or `--ui` as a detached process
 
-- `GET /api/test-steps?testId=sales-standard`
+- `GET /api/test-steps?testId=sales-so-with-credit-limit`
   - reads available screenshot files from `test-results/screenshots/sales_standard_process`
   - returns ordered step metadata for files that exist
 
-- `GET /api/test-screenshot?testId=sales-standard&file=<name>`
+- `GET /api/test-screenshot?testId=sales-so-with-credit-limit&file=<name>`
   - streams one known screenshot file as `image/png`
   - rejects unknown test IDs, unknown file names, and paths outside the screenshot directory
 
@@ -104,7 +104,7 @@ Endpoints:
 
 Logs in through `LoginPage`, expects redirect to `/bpi/index.php`, and checks that `Bounty Plus Inc.` is visible somewhere in the page frames.
 
-### `tests/sales/standard.spec.js`
+### `tests/sales/so-with-credit-limit.spec.js`
 
 Runs the Sales standard process with a 180-second timeout.
 
