@@ -3,6 +3,8 @@ const { LoginPage } = require('../pages/base/LoginPage');
 const { MainMenuPage } = require('../pages/base/MainMenuPage');
 const { SalesOrderPage } = require('../pages/transactions/SalesOrderPage');
 const { CreditLimitPage } = require('../pages/approvals/CreditLimitPage');
+const { getSalesBpCode } = require('../helpers/bpCode');
+const { getSalesItemCode } = require('../helpers/itemCode');
 const { takeStepScreenshot } = require('../helpers/screenshots');
 const {
   finishRunSummary,
@@ -15,8 +17,8 @@ test('SO with Credit Limit', async ({ page }) => {
 
   const testId = 'sales-so-with-credit-limit';
   const testName = 'sales standard process';
-  const salesBpCode = process.env.BPI_SALES_BPCODE || '10000010';
-  const salesItemCode = process.env.BPI_SALES_ITEMCODE || '10000002';
+  const salesBpCode = getSalesBpCode();
+  const salesItemCode = getSalesItemCode();
   const salesItemCount = Math.min(
     Math.max(Number.parseInt(process.env.BPI_SALES_ITEM_COUNT || '1', 10) || 1, 1),
     20

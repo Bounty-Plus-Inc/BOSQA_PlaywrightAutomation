@@ -1,7 +1,8 @@
 const { expect } = require('@playwright/test');
 const { BasePage } = require('../base/BasePage');
-const { BusinessPartnerPopup } = require('../popups/BusinessPartnerPopup');
-const { ItemPopup } = require('../popups/ItemPopup');
+const { BusinessPartnerCFL } = require('../popups/BusinessPartnerCFL');
+const { ItemCFL } = require('../popups/ItemCFL');
+const { getSalesBpCode } = require('../../helpers/bpCode');
 const { readCurrentDocNo } = require('../../helpers/docNoReader');
 
 class SalesOrderPage extends BasePage {
@@ -23,17 +24,17 @@ class SalesOrderPage extends BasePage {
       .toContain('Customer');
   }
 
-  async selectInitialCustomerFromLookup(preferredCode = process.env.BPI_SALES_BPCODE || '10000010') {
+  async selectInitialCustomerFromLookup(preferredCode = getSalesBpCode()) {
     const popupPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
     const customerLookup = await this.findInAllFrames(
       'img#cfl_bpcode[onclick*="OpenCFLbusinesspartners"]'
     );
     await customerLookup.click();
 
-    const customerPopupPage = await popupPromise;
-    const customerPopup = new BusinessPartnerPopup(customerPopupPage);
-    await customerPopup.expectLookupReady();
-    const selectedCustomerCode = await customerPopup.selectCustomerCode(preferredCode);
+    const customerCFLPage = await popupPromise;
+    const customerCFL = new BusinessPartnerCFL(customerCFLPage);
+    await customerCFL.expectLookupReady();
+    const selectedCustomerCode = await customerCFL.selectCustomerCode(preferredCode);
 
     const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]');
     await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 7000 });
@@ -50,13 +51,13 @@ class SalesOrderPage extends BasePage {
 
   async selectBusinessPartner(preferredCode) {
     const cflButton = await this.findInAllFrames('#cfl_bpcode');
-    const bpPopupPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
+    const bpCFLPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
     await cflButton.click();
 
-    const bpPopupPage = await bpPopupPromise;
-    await bpPopupPage.waitForLoadState('domcontentloaded');
-    const bpPopup = new BusinessPartnerPopup(bpPopupPage);
-    const selectedCustomerCode = await bpPopup.selectCustomerCode(preferredCode);
+    const bpCFLPage = await bpCFLPromise;
+    await bpCFLPage.waitForLoadState('domcontentloaded');
+    const bpCFL = new BusinessPartnerCFL(bpCFLPage);
+    const selectedCustomerCode = await bpCFL.selectCustomerCode(preferredCode);
     const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]');
     await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 2000 });
     return selectedCustomerCode;
@@ -74,12 +75,12 @@ class SalesOrderPage extends BasePage {
 
   async addItem({ itemCode, unitPrice, businessCenter }) {
     const itemCfl = await this.findInAllFrames('#cfl_itemcodeT1', 6);
-    const itemPopupPromise = this.page.context().waitForEvent('page', { timeout: 2000 });
+    const itemCFLPromise = this.page.context().waitForEvent('page', { timeout: 2000 });
     await itemCfl.click();
 
-    const itemPopupPage = await itemPopupPromise;
-    const itemPopup = new ItemPopup(itemPopupPage);
-    await itemPopup.selectItemByLabel(itemCode);
+    const itemCFLPage = await itemCFLPromise;
+    const itemCFLPageObject = new ItemCFL(itemCFLPage);
+    await itemCFLPageObject.selectItemByLabel(itemCode);
 
     await (await this.findInAllFrames('#df_unitpriceT1')).fill(unitPrice);
     await (await this.findInAllFrames('#df_u_business_centerT1')).selectOption(businessCenter);

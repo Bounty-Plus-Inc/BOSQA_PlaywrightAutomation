@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { readRunSummary } from './resultFiles.js';
 import { testModules } from './testModules.js';
 import { testResults } from './testResults.js';
 
@@ -49,6 +50,43 @@ function getFallbackResultId(specPath) {
   return `${moduleId}-${fileName}`;
 }
 
+function getTestSummary(resultId, hasResultDetails) {
+  if (!hasResultDetails) {
+    return {
+      status: 'not-configured',
+      modules: []
+    };
+  }
+
+  return readRunSummary(resultId);
+}
+
+function getModuleStats(tests) {
+  return tests.reduce(
+    (stats, test) => {
+      stats.total += 1;
+      if (test.status === 'success') {
+        stats.success += 1;
+      } else if (test.status === 'not-run') {
+        stats.notRun += 1;
+      } else if (test.status === 'not-configured') {
+        stats.notConfigured += 1;
+      } else {
+        stats.other += 1;
+      }
+
+      return stats;
+    },
+    {
+      total: 0,
+      success: 0,
+      notRun: 0,
+      notConfigured: 0,
+      other: 0
+    }
+  );
+}
+
 export function getTestCatalog() {
   const testsDir = path.resolve(process.cwd(), 'tests');
   const specs = getSpecFiles(testsDir);
@@ -60,12 +98,16 @@ export function getTestCatalog() {
     const moduleConfig = testModules[moduleId] || {};
     const resultId = getFallbackResultId(spec);
     const result = testResults[resultId];
+    const hasResultDetails = Boolean(result);
+    const summary = getTestSummary(resultId, hasResultDetails);
     const test = {
       id: resultId,
       label: result?.title || slugToTitle(spec.split('/').pop().replace(/\.js$/i, '')),
       spec,
       resultId,
-      hasResultDetails: Boolean(result)
+      hasResultDetails,
+      status: summary?.status || 'not-run',
+      modules: summary?.modules || []
     };
 
     if (!modulesById.has(moduleId)) {
@@ -83,10 +125,14 @@ export function getTestCatalog() {
   }
 
   const modules = [...modulesById.values()]
-    .map((module) => ({
-      ...module,
-      tests: module.tests.sort((a, b) => a.label.localeCompare(b.label))
-    }))
+    .map((module) => {
+      const tests = module.tests.sort((a, b) => a.label.localeCompare(b.label));
+      return {
+        ...module,
+        tests,
+        stats: getModuleStats(tests)
+      };
+    })
     .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
 
   return {

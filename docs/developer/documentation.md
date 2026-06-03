@@ -329,6 +329,107 @@ await login(page);
 ```
 
 
+Business partner code helper:
+
+`tests/helpers/bpCode.js`
+
+`resolveBpCode(value, { envKey })`
+
+Returns the passed value first, then the configured env value.
+
+```js
+const { resolveBpCode } = require('../helpers/bpCode');
+
+const bpCode = resolveBpCode(customerCode, {
+  envKey: 'BPI_SALES_BPCODE'
+});
+```
+
+`getSalesBpCode(value)`
+
+Returns a Sales BP code.
+
+Order:
+
+```txt
+passed value
+BPI_SALES_BPCODE
+```
+
+```js
+const { getSalesBpCode } = require('../helpers/bpCode');
+
+const bpCode = getSalesBpCode();
+```
+
+`getDeliveryBpCode(value)`
+
+Returns a Delivery BP code.
+
+Order:
+
+```txt
+passed value
+BPI_DELIVERY_BPCODE
+```
+
+```js
+const { getDeliveryBpCode } = require('../helpers/bpCode');
+
+const bpCode = getDeliveryBpCode();
+```
+
+`fillBpCodeField(pageOrPageObject, value, options)`
+
+Fills the reusable BP Code field.
+
+Primary selector:
+
+```txt
+input#df_bpcode[name="df_bpcode"]
+```
+
+Order:
+
+```txt
+passed value
+env value
+```
+
+```js
+const { fillBpCodeField } = require('../helpers/bpCode');
+
+await fillBpCodeField(page);
+await fillBpCodeField(deliveryOrder, null, { envKey: 'BPI_DELIVERY_BPCODE' });
+```
+
+It throws an error if the BP Code field is not found.
+
+Item code helper:
+
+`tests/helpers/itemCode.js`
+
+`getSalesItemCode(value)`
+
+Returns a Sales item code.
+
+Order:
+
+```txt
+passed value
+BPI_SALES_ITEMCODE
+```
+
+```js
+const { getSalesItemCode } = require('../helpers/itemCode');
+
+const itemCode = getSalesItemCode();
+const itemCode = getSalesItemCode(process.env.BPI_SALES_ITEMCODE);
+```
+
+It throws an error if no value is passed and `BPI_SALES_ITEMCODE` is empty.
+
+
 Sales Order page:
 
 `tests/pages/transactions/SalesOrderPage.js`
@@ -355,7 +456,7 @@ await salesOrder.expectCustomerLabelVisible();
 Opens the customer lookup, selects the preferred customer, and verifies the BP code.
 
 ```js
-const bpCode = await salesOrder.selectInitialCustomerFromLookup('10000010');
+const bpCode = await salesOrder.selectInitialCustomerFromLookup(process.env.BPI_SALES_BPCODE);
 ```
 
 `selectDocSeries(value)`
@@ -371,7 +472,7 @@ await salesOrder.selectDocSeries('359');
 Selects a business partner from the lookup after the page is already open.
 
 ```js
-await salesOrder.selectBusinessPartner('10000010');
+await salesOrder.selectBusinessPartner(process.env.BPI_SALES_BPCODE);
 ```
 
 `addItems({ itemCode, unitPrice, businessCenter, count })`
@@ -380,7 +481,7 @@ Adds the same item multiple times.
 
 ```js
 await salesOrder.addItems({
-  itemCode: '10000002',
+  itemCode: process.env.BPI_SALES_ITEMCODE,
   unitPrice: '100',
   businessCenter: 'NCRCL',
   count: 3
@@ -393,7 +494,7 @@ Adds one item line.
 
 ```js
 await salesOrder.addItem({
-  itemCode: '10000002',
+  itemCode: process.env.BPI_SALES_ITEMCODE,
   unitPrice: '100',
   businessCenter: 'NCRCL'
 });
@@ -495,7 +596,7 @@ await deliveryOrder.expectLoaded();
 Fills the BP Code field.
 
 ```js
-await deliveryOrder.fillBusinessPartner('10000010');
+await deliveryOrder.fillBusinessPartner();
 ```
 
 `openCopyFromSalesOrdersPopup(bpCode, beforeOpen)`
@@ -503,7 +604,7 @@ await deliveryOrder.fillBusinessPartner('10000010');
 Fills BP Code, opens Copy From > Sales Orders, and returns the popup page.
 
 ```js
-const popup = await deliveryOrder.openCopyFromSalesOrdersPopup('10000010');
+const popup = await deliveryOrder.openCopyFromSalesOrdersPopup(process.env.BPI_DELIVERY_BPCODE);
 ```
 
 `copySalesOrderFromPopup(salesOrdersPopup, salesOrderDocNo, hooks = {})`
@@ -814,16 +915,16 @@ await approval.expectOpenAndUneditable();
 ```
 
 
-Popups:
+CFL lookup page objects:
 
-`tests/pages/popups/BusinessPartnerPopup.js`
+`tests/pages/popups/BusinessPartnerCFL.js`
 
 `expectLookupReady()`
 
 Checks that the business partner lookup loaded.
 
 ```js
-await businessPartnerPopup.expectLookupReady();
+await businessPartnerCFL.expectLookupReady();
 ```
 
 `selectDisplayedCustomer(rowSelector = '#dd_custnoT1r2')`
@@ -831,25 +932,25 @@ await businessPartnerPopup.expectLookupReady();
 Selects the displayed customer row and returns its code.
 
 ```js
-const bpCode = await businessPartnerPopup.selectDisplayedCustomer();
+const bpCode = await businessPartnerCFL.selectDisplayedCustomer();
 ```
 
 `selectCustomerCode(preferredCode)`
 
-Selects a specific customer code, falling back to `10000010`.
+Selects a specific customer code.
 
 ```js
-const bpCode = await businessPartnerPopup.selectCustomerCode('10000010');
+const bpCode = await businessPartnerCFL.selectCustomerCode(process.env.BPI_SALES_BPCODE);
 ```
 
-`tests/pages/popups/ItemPopup.js`
+`tests/pages/popups/ItemCFL.js`
 
 `selectItemByLabel(itemCode)`
 
 Selects an item by visible label and clicks OK.
 
 ```js
-await itemPopup.selectItemByLabel('10000002');
+await itemCFL.selectItemByLabel(process.env.BPI_SALES_ITEMCODE);
 ```
 
 

@@ -2,6 +2,7 @@ const { test } = require('@playwright/test');
 const { LoginPage } = require('../pages/base/LoginPage');
 const { MainMenuPage } = require('../pages/base/MainMenuPage');
 const { DeliveryOrderPage } = require('../pages/transactions/DeliveryOrderPage');
+const { getDeliveryBpCode } = require('../helpers/bpCode');
 const { takeStepScreenshot } = require('../helpers/screenshots');
 const {
   finishRunSummary,
@@ -15,7 +16,7 @@ test('Delivery Order', async ({ page }) => {
 
   const testId = 'sales-delivery-order';
   const testName = 'delivery order';
-  const bpCode = process.env.BPI_DELIVERY_BPCODE || '10000010';
+  const bpCode = getDeliveryBpCode();
   const salesOrderDocNo =
     process.env.BPI_DELIVERY_SODOCNO || getModuleDocNo('Sales Order', 'sales-so-with-credit-limit');
   const loginPage = new LoginPage(page);

@@ -1,5 +1,6 @@
 const { expect } = require('@playwright/test');
 const { BasePage } = require('../base/BasePage');
+const { fillBpCodeField } = require('../../helpers/bpCode');
 const { readCurrentDocNo } = require('../../helpers/docNoReader');
 
 class DeliveryOrderPage extends BasePage {
@@ -22,9 +23,7 @@ class DeliveryOrderPage extends BasePage {
   }
 
   async fillBusinessPartner(bpCode) {
-    const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]', 20);
-    await bpCodeInput.fill(bpCode);
-    await expect(bpCodeInput).toHaveValue(bpCode);
+    return fillBpCodeField(this, bpCode, { envKey: 'BPI_DELIVERY_BPCODE' });
   }
 
   async openCopyFromSalesOrdersPopup(bpCode, beforeOpen) {

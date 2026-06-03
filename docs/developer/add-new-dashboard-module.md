@@ -25,7 +25,7 @@ Common files:
 tests/pages/base/MainMenuPage.js
 tests/pages/transactions/<PageName>.js
 tests/pages/approvals/<PageName>.js
-tests/pages/popups/<PopupName>.js
+tests/pages/popups/<CFLName>.js
 ```
 
 Step 7: no need to update `src/App.jsx` because the module button and test cards are created dynamically.

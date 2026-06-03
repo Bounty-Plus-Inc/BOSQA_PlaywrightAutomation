@@ -1,6 +1,6 @@
 const { BasePage } = require('../base/BasePage');
 
-class ItemPopup extends BasePage {
+class ItemCFL extends BasePage {
   async selectItemByLabel(itemCode) {
     await this.page.waitForLoadState('domcontentloaded');
     const itemLabel = await this.findInAllFrames(`label:has-text("${itemCode}")`, 20);
@@ -12,4 +12,4 @@ class ItemPopup extends BasePage {
   }
 }
 
-module.exports = { ItemPopup };
+module.exports = { ItemCFL };

@@ -16,7 +16,6 @@ The folder contains 3,567 files using about 104.8 MB. Most files are from `node_
 | `tests/` | Playwright specs, page-object classes, and test helpers. |
 | `scripts/` | CLI helper for selecting headed or UI Playwright mode. |
 | `docs/` | Existing visual documentation for the standard sales process. |
-| `ui/` | Standalone static HTML mockup of the regression-test control panel. |
 | `test-results/` | Latest Playwright result metadata and saved step screenshots. |
 | `playwright-report/` | Generated HTML Playwright report. |
 | `dist/` | Generated Vite production build. |
@@ -135,8 +134,8 @@ The approver defaults to the `BPI_USERID` environment variable or `playwrightAut
 | `tests/pages/transactions/DeliveryOrderPage.js` | Handles Delivery Order form actions, Copy From Sales Orders, logistics fields, lookup selections, and draft save. |
 | `tests/pages/approvals/CreditLimitPage.js` | Creates a credit-limit check, filters by customer, selects the matching Sales Order row, approves it, clicks Add, and verifies success/Open status. |
 | `tests/pages/approvals/TransactionApprovalPage.js` | Handles transaction approval filtering, row selection, approval decision, Add, and Open/uneditable status verification. |
-| `tests/pages/popups/BusinessPartnerPopup.js` | Reads and selects business partner/customer rows from lookup popups. |
-| `tests/pages/popups/ItemPopup.js` | Selects an item by visible label and confirms the popup. |
+| `tests/pages/popups/BusinessPartnerCFL.js` | Reads and selects business partner/customer rows from CFL lookup popups. |
+| `tests/pages/popups/ItemCFL.js` | Selects an item by visible label and confirms the CFL lookup. |
 
 ## Helpers
 
@@ -180,10 +179,6 @@ The current `.last-run.json` reports:
 `docs/standard-process-visuals.md` documents the expected screenshot sequence for the standard process. It includes the main happy-path screenshots and the failure visual rule for `ZZ_Status_Not_Open_Latest.png`.
 
 Note: the current screenshot directory has the credit-limit screenshots and blocking message, but does not currently contain `07_Status_Open_After_Add.png` or `ZZ_Status_Not_Open_Latest.png`.
-
-## Static UI Mockup
-
-`ui/standard-regression-test.html` is a standalone HTML/CSS/JS mockup. It shows the same general control-panel concept, but it does not run tests or load real results. The active application is the Vite React app under `src/`.
 
 ## Generated And Vendor Areas
 

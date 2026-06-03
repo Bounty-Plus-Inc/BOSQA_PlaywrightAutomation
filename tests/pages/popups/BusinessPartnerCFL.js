@@ -1,7 +1,7 @@
 const { expect } = require('@playwright/test');
 const { BasePage } = require('../base/BasePage');
 
-class BusinessPartnerPopup extends BasePage {
+class BusinessPartnerCFL extends BasePage {
   async expectLookupReady() {
     await this.page.waitForLoadState('domcontentloaded');
     await expect(this.page).toHaveURL(/cflbusinesspartners\.php/i, { timeout: 20000 });
@@ -14,7 +14,11 @@ class BusinessPartnerPopup extends BasePage {
   async selectDisplayedCustomer(rowSelector = '#dd_custnoT1r2') {
     const selectedCustomerCodeElement = await this.findInAllFrames(rowSelector);
     const selectedCustomerCode =
-      (await selectedCustomerCodeElement.textContent())?.trim() || '10000010';
+      (await selectedCustomerCodeElement.textContent())?.trim() || '';
+    if (!selectedCustomerCode) {
+      throw new Error(`Customer code was empty for row selector: ${rowSelector}`);
+    }
+
     await selectedCustomerCodeElement.click();
 
     const okButton = await this.findInAllFrames("a.button[onclick*=\"editTableRow('T1')\"]");
@@ -24,7 +28,11 @@ class BusinessPartnerPopup extends BasePage {
   }
 
   async selectCustomerCode(preferredCode) {
-    const codeSelectors = [preferredCode, '10000010'];
+    if (!preferredCode) {
+      throw new Error('Customer code is required for BusinessPartnerCFL.selectCustomerCode().');
+    }
+
+    const codeSelectors = [preferredCode];
 
     for (const code of codeSelectors) {
       try {
@@ -51,4 +59,4 @@ class BusinessPartnerPopup extends BasePage {
   }
 }
 
-module.exports = { BusinessPartnerPopup };
+module.exports = { BusinessPartnerCFL };

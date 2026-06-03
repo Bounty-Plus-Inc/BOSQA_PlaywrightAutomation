@@ -29,6 +29,56 @@ function getVideoSearchTerms(testId) {
   ];
 }
 
+function removeInsideTestResults(targetPath) {
+  const testResultsDir = path.resolve(process.cwd(), 'test-results');
+  const resolvedTarget = path.resolve(targetPath);
+
+  if (!resolvedTarget.startsWith(testResultsDir) || !fs.existsSync(resolvedTarget)) {
+    return false;
+  }
+
+  fs.rmSync(resolvedTarget, { recursive: true, force: true });
+  return true;
+}
+
+function clearTestResultFiles(test) {
+  const removed = [];
+  const result = testResults[test.resultId];
+  const summaryPath = path.resolve(process.cwd(), 'test-results', `${test.resultId}-summary.json`);
+
+  if (removeInsideTestResults(summaryPath)) {
+    removed.push(summaryPath);
+  }
+
+  if (result?.screenshotsDir) {
+    const screenshotsDir = path.resolve(process.cwd(), result.screenshotsDir);
+    if (removeInsideTestResults(screenshotsDir)) {
+      removed.push(screenshotsDir);
+    }
+  }
+
+  const testResultsDir = path.resolve(process.cwd(), 'test-results');
+  if (!fs.existsSync(testResultsDir)) return removed;
+
+  const terms = [test.resultId, ...getVideoSearchTerms(test.resultId)]
+    .filter(Boolean)
+    .map((term) => String(term).toLowerCase());
+
+  for (const entry of fs.readdirSync(testResultsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+
+    const entryName = entry.name.toLowerCase();
+    if (!terms.some((term) => entryName.includes(term))) continue;
+
+    const entryPath = path.join(testResultsDir, entry.name);
+    if (removeInsideTestResults(entryPath)) {
+      removed.push(entryPath);
+    }
+  }
+
+  return removed;
+}
+
 export function createPlaywrightRunnerApi() {
   return {
     name: 'playwright-runner-api',
@@ -87,6 +137,38 @@ export function createPlaywrightRunnerApi() {
 
         child.unref();
         sendJson(res, 200, { ok: true, spec, mode, itemCount });
+      });
+
+      server.middlewares.use('/api/clear-module-results', async (req, res) => {
+        if (req.method !== 'POST') {
+          sendJson(res, 405, { error: 'Method not allowed' });
+          return;
+        }
+
+        let payload;
+        try {
+          payload = await readJsonBody(req);
+        } catch (error) {
+          sendJson(res, 400, { error: 'Invalid JSON body' });
+          return;
+        }
+
+        const catalog = getTestCatalog();
+        const module = catalog.modules.find((entry) => entry.id === payload.moduleId);
+        if (!module) {
+          sendJson(res, 400, { error: 'Unknown module selected' });
+          return;
+        }
+
+        const removed = module.tests.flatMap((test) => clearTestResultFiles(test));
+        const nextCatalog = getTestCatalog();
+        sendJson(res, 200, {
+          ok: true,
+          moduleId: module.id,
+          removedCount: removed.length,
+          modules: nextCatalog.modules,
+          tests: nextCatalog.tests
+        });
       });
 
       server.middlewares.use('/api/test-steps', (req, res) => {

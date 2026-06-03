@@ -64,6 +64,40 @@ function Icon({ name }) {
   return <span className="icon">{icons[name] || icons.file}</span>;
 }
 
+function formatStatus(status) {
+  return String(status || 'not-run')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getStatusClass(status) {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized === 'success') return 'success';
+  if (normalized === 'not-run') return 'idle';
+  if (normalized === 'not-configured') return 'warning';
+  if (normalized.includes('success')) return 'success';
+  return 'warning';
+}
+
+function getModuleStats(tests) {
+  return (tests || []).reduce(
+    (stats, test) => {
+      stats.total += 1;
+      if (test.status === 'success') {
+        stats.success += 1;
+      } else if (test.status === 'not-run') {
+        stats.notRun += 1;
+      } else if (test.status === 'not-configured') {
+        stats.notConfigured += 1;
+      } else {
+        stats.other += 1;
+      }
+      return stats;
+    },
+    { total: 0, success: 0, notRun: 0, notConfigured: 0, other: 0 }
+  );
+}
+
 export default function App() {
   const [theme, setTheme] = useState(() => {
     if (typeof window === 'undefined') return 'light';
@@ -122,6 +156,14 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (activeResultTest?.hasResultDetails && !resultSummary) {
+      openResults(activeResultTest);
+    }
+  }, [activeResultTest?.id]);
+
+  const activeModule = testModules.find((module) => module.id === activePanel);
+
   const togglePanel = (panel) => {
     setActivePanel((current) => (current === panel ? '' : panel));
     setRunStatus('');
@@ -177,7 +219,57 @@ export default function App() {
       setResultSteps(stepsData.steps);
       setResultSummary(summaryData.summary);
       setResultVideoUrl(summaryData.videoUrl);
+      setTestModules((modules) =>
+        modules.map((module) => {
+          const tests = (module.tests || []).map((entry) =>
+            entry.id === test.id
+              ? {
+                  ...entry,
+                  status: summaryData.summary?.status || entry.status,
+                  modules: summaryData.summary?.modules || entry.modules
+                }
+              : entry
+          );
+
+          return {
+            ...module,
+            tests,
+            stats: getModuleStats(tests)
+          };
+        })
+      );
       setResultsStatus(stepsData.steps.length ? '' : 'No screenshots yet.');
+    } catch (error) {
+      setResultsStatus(`Error: ${error.message}`);
+    }
+  };
+
+  const clearModuleResults = async (module) => {
+    if (!module) return;
+
+    setResultsStatus(`Clearing ${module.label} results...`);
+    try {
+      const response = await fetch('/api/clear-module-results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ moduleId: module.id })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to clear module results');
+
+      const modules = data.modules || [];
+      const activeModule = modules.find((entry) => entry.id === module.id);
+      const nextTest =
+        activeModule?.tests?.find((test) => test.hasResultDetails) ||
+        modules.flatMap((entry) => entry.tests || []).find((test) => test.hasResultDetails) ||
+        null;
+
+      setTestModules(modules);
+      setActiveResultTest(nextTest);
+      setResultSteps([]);
+      setResultSummary(null);
+      setResultVideoUrl('');
+      setResultsStatus(`${module.label} results cleared.`);
     } catch (error) {
       setResultsStatus(`Error: ${error.message}`);
     }
@@ -196,6 +288,57 @@ export default function App() {
 
   const renderPreview = () => (
     <section className="print-results preview-panel" aria-label="Test preview">
+      {activeModule && (
+        <section className="module-overview" aria-label={`${activeModule.label} result overview`}>
+          <div className="module-overview-header">
+            <div>
+              <p>Module Results</p>
+              <h2>{activeModule.label}</h2>
+            </div>
+            <button type="button" className="clear-button" onClick={() => clearModuleResults(activeModule)}>
+              Clear Results
+            </button>
+          </div>
+
+          <div className="module-result-grid">
+            {(activeModule.tests || []).map((test) => (
+              <article className="module-result-card" key={test.id}>
+                <div>
+                  <strong>{test.label}</strong>
+                  <span className={`status-badge ${getStatusClass(test.status)}`}>
+                    {formatStatus(test.status)}
+                  </span>
+                </div>
+                <div className="module-result-meta">
+                  {(test.modules || []).length ? (
+                    test.modules.map((entry) => (
+                      <span key={`${test.id}-${entry.module}`}>
+                        {entry.module}: {entry.status}
+                      </span>
+                    ))
+                  ) : (
+                    <span>No module result yet</span>
+                  )}
+                </div>
+                <div className="card-actions">
+                  <button type="button" onClick={() => openRunModePopup(test)} aria-label={`Run ${test.label}`}>
+                    <Icon name="play" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openResults(test)}
+                    aria-label={`View ${test.label}`}
+                    disabled={!test.hasResultDetails}
+                  >
+                    <Icon name="eye" />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="results-header">
         <div>
           <h2 id="results-title">{activeResultTest?.label || 'Results'}</h2>
@@ -307,6 +450,9 @@ export default function App() {
                       disabled={!test.hasResultDetails}
                     >
                       {test.label}
+                      <span className={`status-badge ${getStatusClass(test.status)}`}>
+                        {formatStatus(test.status)}
+                      </span>
                     </button>
                     <div className="card-actions">
                       <button type="button" onClick={() => openRunModePopup(test)} aria-label={`Run ${test.label}`}>
