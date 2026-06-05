@@ -1,4 +1,6 @@
+// This is for working with files and folders.
 const fs = require('fs');
+// This is for building safe file and folder paths.
 const path = require('path');
 
 function getSummaryPath(testId = 'sales-so-with-credit-limit') {

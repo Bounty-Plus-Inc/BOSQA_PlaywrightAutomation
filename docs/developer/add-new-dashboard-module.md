@@ -22,11 +22,13 @@ Step 6: update page object files only if the new module needs new navigation or 
 Common files:
 
 ```txt
-tests/pages/base/MainMenuPage.js
+tests/pages/base/moduleNavigation/<TargetModule>MenuPage.js
 tests/pages/transactions/<PageName>.js
 tests/pages/approvals/<PageName>.js
 tests/pages/popups/<CFLName>.js
 ```
+
+Main-menu navigation selectors should go in a dedicated module navigation file under `tests/pages/base/moduleNavigation/`. Do not add navigation to a shared menu page.
 
 Step 7: no need to update `src/App.jsx` because the module button and test cards are created dynamically.
 

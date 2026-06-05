@@ -1,11 +1,17 @@
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'module';
 import { sendJson, readJsonBody } from './http.js';
 import { buildPdfHtml, safeFileName } from './pdfBuilder.js';
 import { getResultSteps, findLatestTestVideo, readRunSummary } from './resultFiles.js';
 import { getTestCatalog } from './testCatalog.js';
 import { testResults } from './testResults.js';
+
+// This is for enabling CommonJS require inside this ES module.
+const require = createRequire(import.meta.url);
+// This is for creating new module and test scaffolds.
+const { createTestScaffold } = require('../../add-ons/scaffold-generator/createTestScaffold.js');
 
 function toSlug(value) {
   return String(value || '')
@@ -39,6 +45,21 @@ function removeInsideTestResults(targetPath) {
 
   fs.rmSync(resolvedTarget, { recursive: true, force: true });
   return true;
+}
+
+function toRelativeAppPath(filePath) {
+  return path.relative(process.cwd(), filePath).split(path.sep).join('/');
+}
+
+function getSafeGeneratedGuide(fileName) {
+  const generatedDir = path.resolve(process.cwd(), 'docs', 'generated');
+  const guidePath = path.resolve(generatedDir, fileName || '');
+
+  if (!guidePath.startsWith(generatedDir) || !guidePath.endsWith('.txt')) {
+    return null;
+  }
+
+  return guidePath;
 }
 
 function clearTestResultFiles(test) {
@@ -113,9 +134,58 @@ export function createPlaywrightRunnerApi() {
           20
         );
 
-        if (!getTestCatalog().testsBySpec[spec]) {
+        const selectedTest = getTestCatalog().testsBySpec[spec];
+        const actionId = String(payload.actionId || '');
+        const selectedAction = actionId
+          ? selectedTest?.actions?.find((action) => action.id === actionId)
+          : null;
+        const documentNumber = String(payload.documentNumber || '').trim();
+        const documentRunMode = String(
+          payload.documentRunMode || selectedTest?.documentRunModes?.[0]?.id || ''
+        ).trim();
+        const selectedDocumentRunMode = documentRunMode
+          ? selectedTest?.documentRunModes?.find((mode) => mode.id === documentRunMode)
+          : null;
+        const dataInputs = payload.dataInputs && typeof payload.dataInputs === 'object'
+          ? payload.dataInputs
+          : {};
+
+        if (!selectedTest) {
           sendJson(res, 400, { error: 'Unknown test selected' });
           return;
+        }
+
+        if (actionId && !selectedAction) {
+          sendJson(res, 400, { error: 'Unknown test action selected' });
+          return;
+        }
+
+        if (selectedTest.actions?.length && !actionId) {
+          sendJson(res, 400, { error: 'Document selection is required' });
+          return;
+        }
+
+        if (selectedTest.documentNumberInput && !documentNumber) {
+          sendJson(res, 400, { error: 'Document number is required' });
+          return;
+        }
+
+        if (selectedTest.documentRunModes?.length && !selectedDocumentRunMode) {
+          sendJson(res, 400, { error: 'Unknown Find Document action selected' });
+          return;
+        }
+
+        const inputEnv = {};
+        for (const input of selectedTest.dataInputs || []) {
+          const value = String(dataInputs[input.id] || '').trim();
+          if (input.required && !value) {
+            sendJson(res, 400, { error: `${input.label} is required` });
+            return;
+          }
+
+          if (value && input.envKey) {
+            inputEnv[input.envKey] = value;
+          }
         }
 
         if (!allowedModes.has(mode)) {
@@ -128,7 +198,12 @@ export function createPlaywrightRunnerApi() {
           cwd: process.cwd(),
           env: {
             ...process.env,
-            BPI_SALES_ITEM_COUNT: String(itemCount)
+            ...inputEnv,
+            BPI_SALES_ITEM_COUNT: String(itemCount),
+            BPI_TEST_ACTION_ID: actionId,
+            BPI_TEST_ACTION_LABEL: selectedAction?.label || '',
+            BPI_FIND_DOCUMENT_NO: documentNumber,
+            BPI_FIND_DOCUMENT_MODE: documentRunMode
           },
           shell: true,
           detached: true,
@@ -136,7 +211,15 @@ export function createPlaywrightRunnerApi() {
         });
 
         child.unref();
-        sendJson(res, 200, { ok: true, spec, mode, itemCount });
+        sendJson(res, 200, {
+          ok: true,
+          spec,
+          mode,
+          itemCount,
+          actionId,
+          documentNumber,
+          documentRunMode
+        });
       });
 
       server.middlewares.use('/api/clear-module-results', async (req, res) => {
@@ -169,6 +252,72 @@ export function createPlaywrightRunnerApi() {
           modules: nextCatalog.modules,
           tests: nextCatalog.tests
         });
+      });
+
+      server.middlewares.use('/api/create-scaffold', async (req, res) => {
+        if (req.method !== 'POST') {
+          sendJson(res, 405, { error: 'Method not allowed' });
+          return;
+        }
+
+        let payload;
+        try {
+          payload = await readJsonBody(req);
+        } catch (error) {
+          sendJson(res, 400, { error: 'Invalid JSON body' });
+          return;
+        }
+
+        const moduleName = String(payload.moduleName || '').trim();
+        const testName = String(payload.testName || '').trim();
+
+        if (!moduleName) {
+          sendJson(res, 400, { error: 'Module name is required' });
+          return;
+        }
+
+        if (!testName) {
+          sendJson(res, 400, { error: 'Test case name is required' });
+          return;
+        }
+
+        try {
+          const result = createTestScaffold({
+            module: moduleName,
+            test: testName
+          });
+          const guideFile = path.basename(result.guidePath);
+
+          sendJson(res, 200, {
+            ok: true,
+            moduleId: result.moduleId,
+            testId: result.testId,
+            guideFile,
+            guidePath: toRelativeAppPath(result.guidePath),
+            guideDownloadUrl: `/api/scaffold-guide?file=${encodeURIComponent(guideFile)}`,
+            createdFiles: result.createdFiles.map(toRelativeAppPath),
+            changedFiles: result.changedFiles.map(toRelativeAppPath),
+            skippedFiles: result.skippedFiles.map(toRelativeAppPath)
+          });
+        } catch (error) {
+          sendJson(res, 500, { error: `Unable to create scaffold: ${error.message}` });
+        }
+      });
+
+      server.middlewares.use('/api/scaffold-guide', (req, res) => {
+        const requestUrl = new URL(req.url || '', 'http://localhost');
+        const guidePath = getSafeGeneratedGuide(requestUrl.searchParams.get('file'));
+
+        if (!guidePath || !fs.existsSync(guidePath)) {
+          res.statusCode = 404;
+          res.end('Guide not found');
+          return;
+        }
+
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${path.basename(guidePath)}"`);
+        fs.createReadStream(guidePath).pipe(res);
       });
 
       server.middlewares.use('/api/test-steps', (req, res) => {

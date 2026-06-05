@@ -1,4 +1,6 @@
+// This is for recording the test result summary.
 const { recordModuleDocNo } = require('./runSummary');
+// This is for shared page object behavior.
 const { BasePage } = require('../pages/base/BasePage');
 
 const DEFAULT_DOCNO_SELECTORS = [

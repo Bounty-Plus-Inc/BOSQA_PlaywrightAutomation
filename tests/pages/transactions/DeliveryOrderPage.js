@@ -1,6 +1,10 @@
+// This is for using Playwright test and assertion tools.
 const { expect } = require('@playwright/test');
+// This is for shared page object behavior.
 const { BasePage } = require('../base/BasePage');
+// This is for reading or filling business partner codes.
 const { fillBpCodeField } = require('../../helpers/bpCode');
+// This is for reading document numbers from the page.
 const { readCurrentDocNo } = require('../../helpers/docNoReader');
 
 class DeliveryOrderPage extends BasePage {

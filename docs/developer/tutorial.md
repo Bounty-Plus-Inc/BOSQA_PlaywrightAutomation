@@ -22,7 +22,7 @@ Step 4: update page object files only if the test needs new screen actions.
 Common files:
 
 ```txt
-tests/pages/base/MainMenuPage.js
+tests/pages/base/moduleNavigation/<TargetModule>MenuPage.js
 tests/pages/transactions/<PageName>.js
 tests/pages/approvals/<PageName>.js
 tests/pages/popups/<CFLName>.js

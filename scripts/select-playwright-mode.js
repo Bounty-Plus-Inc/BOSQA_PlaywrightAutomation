@@ -1,4 +1,6 @@
+// This is for reading command line input.
 const readline = require('readline');
+// This is for starting Playwright from the command line.
 const { spawn } = require('child_process');
 
 const extraArgs = process.argv.slice(2);

@@ -1,0 +1,47 @@
+Scaffold Guide
+
+Module: Bessiemer
+Module ID: bessiemer
+Test Case: Bessie_test
+Test ID: bessiemer-bessie-test
+
+Created Files:
+- D:\PlayWright\tests\bessiemer\bessie-test.spec.js
+- D:\PlayWright\tests\pages\base\moduleNavigation\BessiemerMenuPage.js
+- D:\PlayWright\tests\pages\transactions\BessieTestPage.js
+
+Updated Files:
+- D:\PlayWright\config\dashboard\testModules.js
+- D:\PlayWright\config\dashboard\testResults.js
+
+Skipped Existing Files:
+- None
+
+What each file does:
+
+- tests/bessiemer/bessie-test.spec.js
+  Main Playwright test flow. Fill in the actual business steps here.
+
+- tests/pages/base/moduleNavigation/BessiemerMenuPage.js
+  Opens the target BPI module. Replace the TODO with real menu selectors.
+
+- tests/pages/transactions/BessieTestPage.js
+  Page object for screen-specific actions and assertions.
+
+- tests/lineItemReaders/documentLineItems.js
+  Shared universal line-item reader used by Find Document replicate mode.
+
+- config/dashboard/testModules.js
+  Adds the dashboard module button when the module is new.
+
+- config/dashboard/testResults.js
+  Adds dashboard result metadata and screenshot names.
+
+Next Steps:
+
+1. Fill in menu navigation selectors in tests/pages/base/moduleNavigation/BessiemerMenuPage.js.
+2. Add transaction actions in tests/pages/transactions/BessieTestPage.js.
+3. Add test steps in tests/bessiemer/bessie-test.spec.js.
+4. Run: node --check tests/bessiemer/bessie-test.spec.js
+5. Run: npm run build
+6. Run: npx playwright test tests/bessiemer/bessie-test.spec.js --headed

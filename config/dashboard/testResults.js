@@ -1,7 +1,51 @@
+import { createRequire } from 'module';
+
+// This is for enabling CommonJS require inside this ES module.
+const require = createRequire(import.meta.url);
+// This is for listing Find Document dropdown options.
+const { findDocumentActions } = require('../../tests/utilities/findDocumentActions.js');
+
+function getFindDocumentSteps() {
+  return Object.fromEntries(
+    findDocumentActions.flatMap((action) => [
+      [
+        `${action.openedScreenshot}.png`,
+        {
+          title: `${action.label} module opened`,
+          description:
+            `The selected ${action.label} document search flow opened the module before using the document number.`
+        }
+      ],
+      [
+        `${action.loadedScreenshot}.png`,
+        {
+          title: `${action.label} document loaded`,
+          description:
+            'The Find popup filtered by document number, confirmed the matching row, and loaded the document details.'
+        }
+      ]
+    ])
+  );
+}
+
 export const testResults = {
   'sales-so-with-credit-limit': {
     title: 'SO with Credit Limit',
     screenshotsDir: 'test-results/screenshots/sales_standard_process',
+    dataInputs: [
+      {
+        id: 'customerCode',
+        label: 'Customer Code',
+        envKey: 'BPI_SALES_BPCODE',
+        required: true
+      },
+      {
+        id: 'itemCode',
+        label: 'Item Code',
+        envKey: 'BPI_SALES_ITEMCODE',
+        required: true
+      }
+    ],
     steps: {
       '00_SalesOrder_Page_Opened.png': {
         title: 'Sales Order Module Opened',
@@ -10,6 +54,11 @@ export const testResults = {
       '01_Customer_Label_Visible.png': {
         title: 'Customer field confirmed',
         description: 'The customer area appeared, confirming the page loaded correctly.'
+      },
+      '02_BP_CFL_POPUP.png': {
+        title: 'Customer CFL opened',
+        description:
+          'The Business Partner CFL popup opened and showed the customer list before selection.'
       },
       '02_BP_Code_Returned.png': {
         title: 'Customer selected',
@@ -22,6 +71,10 @@ export const testResults = {
       '01_BP_Selected.png': {
         title: 'Business partner updated',
         description: 'The business partner selection was completed successfully.'
+      },
+      '04_ITEM_CFL_POPUP.png': {
+        title: 'Item CFL opened',
+        description: 'The Item CFL popup opened and showed the item list before selection.'
       },
       '04_Item_Updated.png': {
         title: 'Item added to the order',
@@ -73,6 +126,14 @@ export const testResults = {
   'sales-delivery-order': {
     title: 'Delivery Order',
     screenshotsDir: 'test-results/screenshots/delivery_order',
+    dataInputs: [
+      {
+        id: 'customerCode',
+        label: 'Customer Code',
+        envKey: 'BPI_DELIVERY_BPCODE',
+        required: true
+      }
+    ],
     steps: {
       '00_DELIVERY_ORDER_OPENED.png': {
         title: 'Delivery order screen opened',
@@ -153,6 +214,49 @@ export const testResults = {
           'The transaction was added successfully and the document status is Open and uneditable.'
       }
     }
+  },
+  'test-2-test-3': {
+    title: 'Test_3',
+    screenshotsDir: 'test-results/screenshots/test-2_test-3',
+    steps: {
+      '00_TEST_2_TEST_3_OPENED.png': {
+        title: 'Test_3 opened',
+        description: 'The Test_2 Test_3 screen opened successfully.'
+      }
+    }
+  },
+  'bessiemer-bessie-test': {
+    title: 'Bessie_test',
+    screenshotsDir: 'test-results/screenshots/bessiemer_bessie-test',
+    steps: {
+      '00_BESSIEMER_BESSIE_TEST_OPENED.png': {
+        title: 'Bessie_test opened',
+        description: 'The Bessiemer Bessie_test screen opened successfully.'
+      }
+    }
+  },
+  'utilities-find-document': {
+    title: 'Find Document',
+    screenshotsDir: 'test-results/screenshots/find_document',
+    hideFromModules: true,
+    documentNumberInput: true,
+    actions: findDocumentActions.map((action) => ({
+      id: action.id,
+      label: action.label,
+      moduleId: action.moduleId,
+      testResultId: action.testResultId
+    })),
+    documentRunModes: [
+      {
+        id: 'display',
+        label: 'Display'
+      },
+      {
+        id: 'replicate',
+        label: 'Replicate'
+      }
+    ],
+    steps: getFindDocumentSteps()
   }
 
   

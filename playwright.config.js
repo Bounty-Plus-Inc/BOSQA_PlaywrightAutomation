@@ -11,9 +11,13 @@ module.exports = defineConfig({
   reporter: 'html',
   use: {
     baseURL: process.env.BPI_BASE_URL || 'http://10.2.0.178:81',
+    viewport: { width: 1280, height: 720 },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'on'
+    video: {
+      mode: 'on',
+      size: { width: 1280, height: 720 }
+    }
   },
   projects: [
     {

@@ -1,4 +1,6 @@
+// This is for using Playwright test and assertion tools.
 const { expect } = require('@playwright/test');
+// This is for shared page object behavior.
 const { BasePage } = require('../base/BasePage');
 
 class BusinessPartnerCFL extends BasePage {
@@ -32,30 +34,57 @@ class BusinessPartnerCFL extends BasePage {
       throw new Error('Customer code is required for BusinessPartnerCFL.selectCustomerCode().');
     }
 
-    const codeSelectors = [preferredCode];
+    await this.expectLookupReady();
 
-    for (const code of codeSelectors) {
-      try {
-        const hiddenCode = await this.findInAllFrames(
-          `input[id^="df_custnoT1r"][value="${code}"]`,
-          10
-        );
-        const hiddenCodeId = await hiddenCode.getAttribute('id');
-        if (!hiddenCodeId) continue;
-        const labelId = `#${hiddenCodeId.replace('df_custno', 'dd_custno')}`;
-        const label = await this.findInAllFrames(labelId, 10);
-        await label.click();
+    const filterInput = await this.findInAllFrames('#df_inputfilter', 20);
+    await filterInput.fill(preferredCode);
 
-        const okButton = await this.findInAllFrames('a.button:has-text("OK")', 20);
-        await okButton.click();
-        await this.page.waitForEvent('close', { timeout: 5000 }).catch(() => {});
-        return code;
-      } catch (e) {
-        continue;
-      }
+    const filterButton = await this.findInAllFrames(
+      'xpath=/html/body/form/table[2]/tbody/tr/td[2]/table/tbody/tr[2]/td/table/tbody/tr[2]/td[3]/a',
+      20
+    ).catch(() => this.findInAllFrames('a.button[onclick*="Grid_Filter"]', 20));
+    await filterButton.click();
+
+    const customerCell = await this.findInAllFrames('xpath=//*[@id="col_custnoT1"]', 20);
+    await expect
+      .poll(async () => {
+        const text = ((await customerCell.textContent().catch(() => '')) || '').trim();
+        const hiddenValue = await this.readCustomerHiddenValue(preferredCode);
+        return hiddenValue || text;
+      }, { timeout: 10000 })
+      .not.toBe('');
+
+    const selectedCustomerCode = await this.findFilteredCustomerCode(preferredCode);
+    if (selectedCustomerCode !== preferredCode) {
+      throw new Error(
+        `Customer code filter returned "${selectedCustomerCode || '(empty)'}" instead of "${preferredCode}".`
+      );
     }
 
-    throw new Error(`Customer code not found in popup: ${preferredCode}`);
+    const okButton = await this.findInAllFrames(
+      'xpath=/html/body/form/table[2]/tbody/tr/td[2]/table/tbody/tr[7]/td/table/tbody/tr/td[2]/table/tbody/tr/td[1]/a',
+      20
+    ).catch(() => this.findInAllFrames("a.button[onclick*=\"editTableRow('T1')\"]", 20));
+    await okButton.click();
+    await this.page.waitForEvent('close', { timeout: 5000 }).catch(() => {});
+    return selectedCustomerCode;
+  }
+
+  async readCustomerHiddenValue(preferredCode) {
+    const hiddenCode = await this.findInAllFrames(
+      `input[id^="df_custnoT1r"][value="${preferredCode}"]`,
+      4
+    ).catch(() => null);
+    return hiddenCode ? (await hiddenCode.inputValue().catch(() => '')) : '';
+  }
+
+  async findFilteredCustomerCode(preferredCode) {
+    const hiddenValue = await this.readCustomerHiddenValue(preferredCode);
+    if (hiddenValue) return hiddenValue;
+
+    const visibleCustomer = await this.findInAllFrames('label[id^="dd_custnoT1r"]', 10)
+      .catch(() => null);
+    return visibleCustomer ? ((await visibleCustomer.textContent()) || '').trim() : '';
   }
 }
 

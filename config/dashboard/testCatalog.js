@@ -93,22 +93,8 @@ export function getTestCatalog() {
   const modulesById = new Map();
   const testsBySpec = {};
 
-  for (const spec of specs) {
-    const moduleId = getModuleId(spec);
+  const addTest = (moduleId, test) => {
     const moduleConfig = testModules[moduleId] || {};
-    const resultId = getFallbackResultId(spec);
-    const result = testResults[resultId];
-    const hasResultDetails = Boolean(result);
-    const summary = getTestSummary(resultId, hasResultDetails);
-    const test = {
-      id: resultId,
-      label: result?.title || slugToTitle(spec.split('/').pop().replace(/\.js$/i, '')),
-      spec,
-      resultId,
-      hasResultDetails,
-      status: summary?.status || 'not-run',
-      modules: summary?.modules || []
-    };
 
     if (!modulesById.has(moduleId)) {
       modulesById.set(moduleId, {
@@ -121,8 +107,79 @@ export function getTestCatalog() {
     }
 
     modulesById.get(moduleId).tests.push(test);
+  };
+
+  for (const spec of specs) {
+    const moduleId = getModuleId(spec);
+    const resultId = getFallbackResultId(spec);
+    const result = testResults[resultId];
+    const hasResultDetails = Boolean(result);
+    const summary = getTestSummary(resultId, hasResultDetails);
+    const test = {
+      id: resultId,
+      label: result?.title || slugToTitle(spec.split('/').pop().replace(/\.js$/i, '')),
+      spec,
+      resultId,
+      hasResultDetails,
+      status: summary?.status || 'not-run',
+      modules: summary?.modules || [],
+      dataInputs: result?.dataInputs || [],
+      actions: result?.actions || [],
+      documentRunModes: result?.documentRunModes || [],
+      documentNumberInput: Boolean(result?.documentNumberInput),
+      utilities: []
+    };
+
+    if (!result?.hideFromModules) {
+      addTest(moduleId, test);
+    }
     testsBySpec[spec] = test;
   }
+
+  const findDocumentTest = Object.values(testsBySpec).find(
+    (test) => test.resultId === 'utilities-find-document'
+  );
+  if (findDocumentTest) {
+    for (const action of findDocumentTest.actions || []) {
+      if (!action.testResultId) continue;
+
+      const targetTest = Object.values(testsBySpec).find((test) => test.id === action.testResultId);
+      if (!targetTest) continue;
+
+      targetTest.utilities.push({
+        id: `find-document-${action.id}`,
+        label: action.label,
+        utilityLabel: findDocumentTest.label,
+        spec: findDocumentTest.spec,
+        resultId: findDocumentTest.resultId,
+        hasResultDetails: findDocumentTest.hasResultDetails,
+        status: findDocumentTest.status,
+        modules: findDocumentTest.modules,
+        documentNumberInput: findDocumentTest.documentNumberInput,
+        documentRunModes: findDocumentTest.documentRunModes,
+        action: {
+          id: action.id,
+          label: action.label
+        }
+      });
+    }
+  }
+
+  addTest('framework', {
+    id: 'framework-scaffold-generator',
+    label: 'Scaffold Generator',
+    spec: '',
+    resultId: 'framework-scaffold-generator',
+    hasResultDetails: false,
+    status: 'ready',
+    modules: [],
+    dataInputs: [],
+    actions: [],
+    documentRunModes: [],
+    documentNumberInput: false,
+    utilities: [],
+    scaffoldGenerator: true
+  });
 
   const modules = [...modulesById.values()]
     .map((module) => {
@@ -133,7 +190,11 @@ export function getTestCatalog() {
         stats: getModuleStats(tests)
       };
     })
-    .sort((a, b) => a.order - b.order || a.label.localeCompare(b.label));
+    .sort((a, b) => {
+      if (a.id === 'framework') return 1;
+      if (b.id === 'framework') return -1;
+      return a.order - b.order || a.label.localeCompare(b.label);
+    });
 
   return {
     modules,

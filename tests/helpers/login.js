@@ -1,3 +1,4 @@
+// This is for logging in before test steps run.
 const { LoginPage } = require('../pages/base/LoginPage');
 
 /**

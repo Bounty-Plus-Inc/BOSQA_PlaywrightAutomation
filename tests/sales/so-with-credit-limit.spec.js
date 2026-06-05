@@ -1,11 +1,28 @@
+// This is for using Playwright test and assertion tools.
 const { test } = require('@playwright/test');
+// This is for logging in before test steps run.
 const { LoginPage } = require('../pages/base/LoginPage');
-const { MainMenuPage } = require('../pages/base/MainMenuPage');
+// This is for opening the target BPI module.
+const {
+  CreditLimitApprovalMenuPage
+} = require('../pages/base/moduleNavigation/CreditLimitApprovalMenuPage');
+// This is for opening the target BPI module.
+const {
+  CreditLimitCheckingMenuPage
+} = require('../pages/base/moduleNavigation/CreditLimitCheckingMenuPage');
+// This is for opening the target BPI module.
+const { SalesOrderMenuPage } = require('../pages/base/moduleNavigation/SalesOrderMenuPage');
+// This is for transaction screen actions and checks.
 const { SalesOrderPage } = require('../pages/transactions/SalesOrderPage');
+// This is for approval screen actions and checks.
 const { CreditLimitPage } = require('../pages/approvals/CreditLimitPage');
+// This is for reading or filling business partner codes.
 const { getSalesBpCode } = require('../helpers/bpCode');
+// This is for reading item codes used by tests.
 const { getSalesItemCode } = require('../helpers/itemCode');
+// This is for saving step screenshots.
 const { takeStepScreenshot } = require('../helpers/screenshots');
+// This is for recording the test result summary.
 const {
   finishRunSummary,
   recordModuleDocNo,
@@ -25,14 +42,16 @@ test('SO with Credit Limit', async ({ page }) => {
   );
   const approverUserId = process.env.BPI_USERID || 'playwrightAut';
   const loginPage = new LoginPage(page);
-  const menu = new MainMenuPage(page);
+  const salesOrderMenu = new SalesOrderMenuPage(page);
+  const creditLimitCheckingMenu = new CreditLimitCheckingMenuPage(page);
+  const creditLimitApprovalMenu = new CreditLimitApprovalMenuPage(page);
   const salesOrder = new SalesOrderPage(page);
   const creditLimit = new CreditLimitPage(page);
   startRunSummary(testId, 'SO with Credit Limit');
 
   const runCreditLimitChecking = async (memory) => {
     await test.step('CREDIT LIMIT STANDARD', async () => {
-      await menu.openCreditLimitChecking();
+      await creditLimitCheckingMenu.open();
       await creditLimit.createCheck({
         customerNo: memory.bpCode,
         approverUserId,
@@ -46,7 +65,7 @@ test('SO with Credit Limit', async ({ page }) => {
     });
 
     await test.step('CREDIT LIMIT APPROVAL', async () => {
-      await menu.openCreditLimitApproval();
+      await creditLimitApprovalMenu.open();
       await creditLimit.createApproval({
         customerNo: memory.bpCode,
         // approverUserId is used in Credit Limit Checking, but Credit Limit Approval has no approver field.
@@ -64,13 +83,17 @@ test('SO with Credit Limit', async ({ page }) => {
 
   await loginPage.loginAs();
 
-  await menu.openSalesOrder();
+  await salesOrderMenu.open();
   await takeStepScreenshot(page, testName, '00_SalesOrder_Page_Opened');
 
   await salesOrder.expectCustomerLabelVisible();
   await takeStepScreenshot(page, testName, '01_Customer_Label_Visible');
 
-  await salesOrder.selectInitialCustomerFromLookup(salesBpCode);
+  await salesOrder.selectInitialCustomerFromLookup(salesBpCode, {
+    beforeSelect: async (customerCFLPage) => {
+      await takeStepScreenshot(customerCFLPage, testName, '02_BP_CFL_POPUP');
+    }
+  });
   await takeStepScreenshot(page, testName, '02_BP_Code_Returned');
 
   await salesOrder.selectDocSeries('359');
@@ -80,7 +103,12 @@ test('SO with Credit Limit', async ({ page }) => {
     itemCode: salesItemCode,
     unitPrice: '100',
     businessCenter: 'NCRCL',
-    count: salesItemCount
+    count: salesItemCount,
+    beforeSelectItem: async (itemCFLPage, index) => {
+      if (index === 0) {
+        await takeStepScreenshot(itemCFLPage, testName, '04_ITEM_CFL_POPUP');
+      }
+    }
   });
   await takeStepScreenshot(page, testName, '04_Item_Updated');
 

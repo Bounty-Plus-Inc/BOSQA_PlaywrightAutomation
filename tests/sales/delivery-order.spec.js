@@ -1,9 +1,16 @@
+// This is for using Playwright test and assertion tools.
 const { test } = require('@playwright/test');
+// This is for logging in before test steps run.
 const { LoginPage } = require('../pages/base/LoginPage');
-const { MainMenuPage } = require('../pages/base/MainMenuPage');
+// This is for opening the target BPI module.
+const { DeliveryOrderMenuPage } = require('../pages/base/moduleNavigation/DeliveryOrderMenuPage');
+// This is for transaction screen actions and checks.
 const { DeliveryOrderPage } = require('../pages/transactions/DeliveryOrderPage');
+// This is for reading or filling business partner codes.
 const { getDeliveryBpCode } = require('../helpers/bpCode');
+// This is for saving step screenshots.
 const { takeStepScreenshot } = require('../helpers/screenshots');
+// This is for recording the test result summary.
 const {
   finishRunSummary,
   getModuleDocNo,
@@ -20,13 +27,13 @@ test('Delivery Order', async ({ page }) => {
   const salesOrderDocNo =
     process.env.BPI_DELIVERY_SODOCNO || getModuleDocNo('Sales Order', 'sales-so-with-credit-limit');
   const loginPage = new LoginPage(page);
-  const menu = new MainMenuPage(page);
+  const deliveryOrderMenu = new DeliveryOrderMenuPage(page);
   const deliveryOrder = new DeliveryOrderPage(page);
 
   startRunSummary(testId, 'Delivery Order');
 
   await loginPage.loginAs();
-  await menu.openDeliveryOrder();
+  await deliveryOrderMenu.open();
   await deliveryOrder.expectLoaded();
   recordModuleDocNo('Delivery Order', '', 'Opened', testId);
   await takeStepScreenshot(page, testName, '00_DELIVERY_ORDER_OPENED');

@@ -1,4 +1,6 @@
+// This is for using Playwright test and assertion tools.
 const { expect } = require('@playwright/test');
+// This is for shared page object behavior.
 const { BasePage } = require('../pages/base/BasePage');
 
 const BP_CODE_SELECTORS = [

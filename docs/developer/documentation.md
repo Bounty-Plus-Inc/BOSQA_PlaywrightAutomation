@@ -4,7 +4,8 @@ This file explains the reusable helpers and page-object methods used by the Play
 
 Use helpers for shared test behavior.
 Use page objects for screen-specific actions.
-Keep selectors inside page objects.
+Keep screen selectors inside page objects.
+Keep module navigation selectors inside dedicated files under `tests/pages/base/moduleNavigation/`.
 
 
 Base helpers:
@@ -138,57 +139,66 @@ await loginPage.setExactValue(loginPage.userId, 'playwrightAut');
 ```
 
 
-Main menu:
+Module navigation:
 
-`tests/pages/base/MainMenuPage.js`
+`tests/pages/base/moduleNavigation/`
 
-`new MainMenuPage(page)`
+Each target module has its own navigation page object with its own selectors and `open()` method.
 
-Creates the main menu page object.
+Do not add module navigation to a shared menu page. Create or update the file for the specific module being opened.
 
 ```js
-const { MainMenuPage } = require('../pages/base/MainMenuPage');
-const menu = new MainMenuPage(page);
+const { SalesOrderMenuPage } = require('../pages/base/moduleNavigation/SalesOrderMenuPage');
+const salesOrderMenu = new SalesOrderMenuPage(page);
+await salesOrderMenu.open();
 ```
 
-`openSalesOrder()`
+Existing navigation files:
 
-Opens Sales Order.
+`SalesOrderMenuPage`
 
 ```js
-await menu.openSalesOrder();
+const { SalesOrderMenuPage } = require('../pages/base/moduleNavigation/SalesOrderMenuPage');
+const salesOrderMenu = new SalesOrderMenuPage(page);
+await salesOrderMenu.open();
 ```
 
-`openDeliveryOrder()`
-
-Opens Delivery Order.
+`DeliveryOrderMenuPage`
 
 ```js
-await menu.openDeliveryOrder();
+const { DeliveryOrderMenuPage } = require('../pages/base/moduleNavigation/DeliveryOrderMenuPage');
+const deliveryOrderMenu = new DeliveryOrderMenuPage(page);
+await deliveryOrderMenu.open();
 ```
 
-`openCreditLimitChecking()`
-
-Opens Credit Limit Checking.
+`CreditLimitCheckingMenuPage`
 
 ```js
-await menu.openCreditLimitChecking();
+const {
+  CreditLimitCheckingMenuPage
+} = require('../pages/base/moduleNavigation/CreditLimitCheckingMenuPage');
+const creditLimitCheckingMenu = new CreditLimitCheckingMenuPage(page);
+await creditLimitCheckingMenu.open();
 ```
 
-`openCreditLimitApproval()`
-
-Opens Credit Limit Approval.
+`CreditLimitApprovalMenuPage`
 
 ```js
-await menu.openCreditLimitApproval();
+const {
+  CreditLimitApprovalMenuPage
+} = require('../pages/base/moduleNavigation/CreditLimitApprovalMenuPage');
+const creditLimitApprovalMenu = new CreditLimitApprovalMenuPage(page);
+await creditLimitApprovalMenu.open();
 ```
 
-`openTransactionApproval()`
-
-Opens Admin > Approval > Transaction Approval.
+`TransactionApprovalMenuPage`
 
 ```js
-await menu.openTransactionApproval();
+const {
+  TransactionApprovalMenuPage
+} = require('../pages/base/moduleNavigation/TransactionApprovalMenuPage');
+const transactionApprovalMenu = new TransactionApprovalMenuPage(page);
+await transactionApprovalMenu.open();
 ```
 
 
@@ -198,7 +208,7 @@ Screenshots:
 
 `takeStepScreenshot(page, testName, stepName)`
 
-Takes a full-page screenshot and saves it under:
+Waits briefly, then takes a full-page screenshot and saves it under:
 
 ```txt
 test-results/screenshots/<testName>/<stepName>.png
@@ -210,6 +220,12 @@ Spaces become underscores.
 const { takeStepScreenshot } = require('../helpers/screenshots');
 
 await takeStepScreenshot(page, 'sales return', '00_PAGE_OPENED');
+```
+
+Pass a popup page to document CFL or popup windows:
+
+```js
+await takeStepScreenshot(customerCFLPage, 'sales standard process', '02_BP_CFL_POPUP');
 ```
 
 

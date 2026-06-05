@@ -8,6 +8,20 @@ export const testModules = {
     label: 'Admins',
     icon: 'addons',
     order: 20
+  },
+  utilities: {
+    label: 'Utilities',
+    icon: 'tools',
+    order: 30
+  },
+  framework: {
+    label: 'Framework',
+    icon: 'file',
+    order: 40
+  },
+  'bessiemer': {
+    label: 'Bessiemer',
+    icon: 'file',
+    order: 50
   }
 };
-

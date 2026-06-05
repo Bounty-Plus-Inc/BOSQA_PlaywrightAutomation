@@ -10,6 +10,7 @@
     "playwright-ui": "playwright test --ui",
     "playwright-select": "node scripts/select-playwright-mode.js",
     "playwright-report": "playwright show-report",
+    "create-scaffold": "node scripts/create-test-scaffold.js",
     "dev": "vite",
     "vite:dev": "vite",
     "build": "vite build",
