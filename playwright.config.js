@@ -21,7 +21,7 @@ module.exports = defineConfig({
   },
   projects: [
     {
-      name: 'chromium',
+      name: 'Automation-BOS',
       use: { ...devices['Desktop Chrome'] }
     }
   ]
