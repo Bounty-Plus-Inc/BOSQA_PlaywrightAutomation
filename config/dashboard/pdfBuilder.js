@@ -14,9 +14,74 @@ export function safeFileName(value) {
     .toLowerCase();
 }
 
+function formatRemarks(remarks) {
+  const normalized = String(remarks || '').trim().toLowerCase();
+  if (normalized === 'met') return 'Validated successfully against the expected value.';
+  if (normalized === 'not met') return 'Actual value differs from the expected value.';
+  return remarks || '-';
+}
+
+function getDocumentationGroups(entries = []) {
+  return entries.reduce(
+    (groups, entry) => {
+      const lineMatch = /^Sales Order Row\s+(\d+)\s+(.+)$/i.exec(entry.module || '');
+      if (!lineMatch) {
+        groups.headers.push(entry);
+        return groups;
+      }
+
+      const rowNumber = Number.parseInt(lineMatch[1], 10);
+      const fieldName = lineMatch[2];
+      const existingGroup = groups.lineItems.find((lineItem) => lineItem.rowNumber === rowNumber);
+      const lineEntry = {
+        ...entry,
+        displayModule: fieldName
+      };
+
+      if (existingGroup) {
+        existingGroup.entries.push(lineEntry);
+      } else {
+        groups.lineItems.push({
+          rowNumber,
+          entries: [lineEntry]
+        });
+      }
+
+      return groups;
+    },
+    { headers: [], lineItems: [] }
+  );
+}
+
+function buildDocumentationTable(entries) {
+  return `<table>
+    <thead>
+      <tr>
+        <th>Test Script</th>
+        <th>Expected Value</th>
+        <th>Actual Result</th>
+        <th>Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${entries
+        .map(
+          (entry) => `<tr>
+            <td>${escapeHtml(entry.displayModule || entry.module)}</td>
+            <td>${escapeHtml(entry.docNo || '-')}</td>
+            <td>${escapeHtml(entry.status)}</td>
+            <td>${escapeHtml(formatRemarks(entry.remarks))}</td>
+          </tr>`
+        )
+        .join('')}
+    </tbody>
+  </table>`;
+}
+
 export function buildPdfHtml(result, summary, steps) {
   const generatedAt = new Date().toLocaleString();
   const modules = summary?.modules || [];
+  const documentationGroups = getDocumentationGroups(modules);
 
   return `<!doctype html>
 <html>
@@ -53,6 +118,14 @@ export function buildPdfHtml(result, summary, steps) {
         border-bottom: 1px solid #d8dee7;
         padding: 8px 10px;
       }
+      .summary h3 {
+        margin: 0;
+        border-bottom: 1px solid #d8dee7;
+        color: #16202a;
+        font-size: 13px;
+        padding: 8px 10px;
+      }
+      .summary-group + .summary-group { border-top: 1px solid #d8dee7; }
       table { width: 100%; border-collapse: collapse; }
       th, td { border-bottom: 1px solid #e6ebf1; padding: 7px 10px; text-align: left; }
       th { background: #f8fafc; color: #475569; font-weight: 700; }
@@ -101,23 +174,24 @@ export function buildPdfHtml(result, summary, steps) {
     ${
       modules.length
         ? `<section class="summary">
-            <h2>Module Document Numbers</h2>
-            <table>
-              <thead>
-                <tr><th>Module</th><th>Doc No</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                ${modules
-                  .map(
-                    (entry) => `<tr>
-                      <td>${escapeHtml(entry.module)}</td>
-                      <td>${escapeHtml(entry.docNo || '-')}</td>
-                      <td>${escapeHtml(entry.status)}</td>
-                    </tr>`
-                  )
-                  .join('')}
-              </tbody>
-            </table>
+            <h2>Documentation Table</h2>
+            ${
+              documentationGroups.headers.length
+                ? `<div class="summary-group">
+                    <h3>Headers</h3>
+                    ${buildDocumentationTable(documentationGroups.headers)}
+                  </div>`
+                : ''
+            }
+            ${documentationGroups.lineItems
+              .sort((a, b) => a.rowNumber - b.rowNumber)
+              .map(
+                (lineItem) => `<div class="summary-group">
+                  <h3>Line Item ${lineItem.rowNumber}</h3>
+                  ${buildDocumentationTable(lineItem.entries)}
+                </div>`
+              )
+              .join('')}
           </section>`
         : ''
     }
@@ -138,4 +212,3 @@ export function buildPdfHtml(result, summary, steps) {
   </body>
 </html>`;
 }
-

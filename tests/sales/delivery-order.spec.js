@@ -25,7 +25,7 @@ test('Delivery Order', async ({ page }) => {
   const testName = 'delivery order';
   const bpCode = getDeliveryBpCode();
   const salesOrderDocNo =
-    process.env.BPI_DELIVERY_SODOCNO || getModuleDocNo('Sales Order', 'sales-so-with-credit-limit');
+    process.env.BPI_DELIVERY_SODOCNO || getModuleDocNo('Sales Order', 'sales-sales-order-transaction');
   const loginPage = new LoginPage(page);
   const deliveryOrderMenu = new DeliveryOrderMenuPage(page);
   const deliveryOrder = new DeliveryOrderPage(page);

@@ -24,8 +24,9 @@ class BusinessPartnerCFL extends BasePage {
     await selectedCustomerCodeElement.click();
 
     const okButton = await this.findInAllFrames("a.button[onclick*=\"editTableRow('T1')\"]");
+    const closePromise = this.page.waitForEvent('close', { timeout: 1200 }).catch(() => {});
     await okButton.click();
-    await this.page.waitForEvent('close', { timeout: 5000 }).catch(() => {});
+    await closePromise;
     return selectedCustomerCode;
   }
 
@@ -65,15 +66,16 @@ class BusinessPartnerCFL extends BasePage {
       'xpath=/html/body/form/table[2]/tbody/tr/td[2]/table/tbody/tr[7]/td/table/tbody/tr/td[2]/table/tbody/tr/td[1]/a',
       20
     ).catch(() => this.findInAllFrames("a.button[onclick*=\"editTableRow('T1')\"]", 20));
+    const closePromise = this.page.waitForEvent('close', { timeout: 1200 }).catch(() => {});
     await okButton.click();
-    await this.page.waitForEvent('close', { timeout: 5000 }).catch(() => {});
+    await closePromise;
     return selectedCustomerCode;
   }
 
   async readCustomerHiddenValue(preferredCode) {
     const hiddenCode = await this.findInAllFrames(
       `input[id^="df_custnoT1r"][value="${preferredCode}"]`,
-      4
+      1
     ).catch(() => null);
     return hiddenCode ? (await hiddenCode.inputValue().catch(() => '')) : '';
   }

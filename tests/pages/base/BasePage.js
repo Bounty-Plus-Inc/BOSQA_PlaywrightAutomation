@@ -14,7 +14,9 @@ class BasePage {
           continue;
         }
       }
-      await this.page.waitForTimeout(500);
+      if (attempt < maxAttempts - 1) {
+        await this.page.waitForTimeout(500);
+      }
     }
     throw new Error(`Element not found after retries: ${selector}`);
   }
@@ -34,7 +36,9 @@ class BasePage {
           continue;
         }
       }
-      await this.page.waitForTimeout(500);
+      if (attempt < maxAttempts - 1) {
+        await this.page.waitForTimeout(500);
+      }
     }
     throw new Error(`Visible element not found after retries: ${selector}`);
   }

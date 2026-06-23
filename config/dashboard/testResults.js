@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 const { findDocumentActions } = require('../../tests/utilities/findDocumentActions.js');
 
 function getFindDocumentSteps() {
-  return Object.fromEntries(
+  const baseSteps = Object.fromEntries(
     findDocumentActions.flatMap((action) => [
       [
         `${action.openedScreenshot}.png`,
@@ -26,12 +26,66 @@ function getFindDocumentSteps() {
       ]
     ])
   );
+
+  return {
+    ...baseSteps,
+    '06_RECREATE_STATUS_DRAFT.png': {
+      title: 'Recreated Sales Order saved as draft',
+      description:
+        'The captured Sales Order data was entered into a new Sales Order and saved as draft.'
+    },
+    '07_RECREATE_STATUS_OPEN_AFTER_ADD.png': {
+      title: 'Recreated Sales Order opened',
+      description: 'The recreated Sales Order was submitted and reached Open status.'
+    },
+    '08_RECREATE_TRANSACTION_APPROVAL_OPENED.png': {
+      title: 'Transaction Approval opened',
+      description:
+        'The recreated Sales Order required Transaction Approval and the approval module opened.'
+    },
+    '09_RECREATE_TRANSACTION_APPROVAL_SELECTED.png': {
+      title: 'Transaction Approval selected',
+      description:
+        'The matching recreated Sales Order transaction was selected and approved.'
+    },
+    '10_RECREATE_TRANSACTION_APPROVAL_DONE.png': {
+      title: 'Transaction Approval completed',
+      description: 'Transaction Approval was saved successfully for the recreated Sales Order.'
+    },
+    '08_RECREATE_CREDIT_LIMIT_STANDARD.png': {
+      title: 'Credit Limit Checking selected',
+      description:
+        'The recreated Sales Order required credit limit checking and the matching row was selected.'
+    },
+    '09_RECREATE_CREDIT_LIMIT_APPROVED.png': {
+      title: 'Credit Limit Checking approved',
+      description: 'Credit Limit Checking was approved for the recreated Sales Order.'
+    },
+    '10_RECREATE_CREDIT_LIMIT_APPROVAL.png': {
+      title: 'Credit Limit Approval selected',
+      description:
+        'The recreated Sales Order was opened in Credit Limit Approval and prepared for approval.'
+    },
+    '11_RECREATE_CREDIT_LIMIT_APPROVAL_DONE.png': {
+      title: 'Credit Limit Approval completed',
+      description: 'Credit Limit Approval was saved successfully for the recreated Sales Order.'
+    },
+    'ZZ_RECREATE_CREDIT_LIMIT_BLOCKING_MESSAGE.png': {
+      title: 'Credit limit blocking message captured',
+      description:
+        'The recreated Sales Order could not open yet because it required credit limit processing.'
+    },
+    'ZZ_RECREATE_STATUS_NOT_OPEN_LATEST.png': {
+      title: 'Recreated Sales Order did not open',
+      description: 'The latest recreated Sales Order status was captured because it did not open.'
+    }
+  };
 }
 
 export const testResults = {
-  'sales-so-with-credit-limit': {
-    title: 'SO with Credit Limit',
-    screenshotsDir: 'test-results/screenshots/sales_standard_process',
+  'sales-sales-order-transaction': {
+    title: 'Sales Order',
+    screenshotsDir: 'test-results/screenshots/sales_order_transaction',
     dataInputs: [
       {
         id: 'customerCode',
@@ -91,6 +145,21 @@ export const testResults = {
       '07_Status_Open_After_Add.png': {
         title: 'Order opened',
         description: 'The order was submitted and moved to open status.'
+      },
+      '08_TRANSACTION_APPROVAL_OPENED.png': {
+        title: 'Transaction Approval opened',
+        description:
+          'The Sales Order process ended successfully and the Transaction Approval module opened.'
+      },
+      '09_TRANSACTION_APPROVAL_SELECTED.png': {
+        title: 'Transaction Approval selected',
+        description:
+          'The approval list was filtered, Approved was selected, and the available transaction rows were checked.'
+      },
+      '10_TRANSACTION_APPROVAL_DONE.png': {
+        title: 'Transaction Approval completed',
+        description:
+          'The Transaction Approval add/save completed and the approval document reached Open status.'
       },
       'ZZ_Credit_Limit_Blocking_Message.png': {
         title: 'Credit limit review needed',
@@ -222,16 +291,6 @@ export const testResults = {
       '00_TEST_2_TEST_3_OPENED.png': {
         title: 'Test_3 opened',
         description: 'The Test_2 Test_3 screen opened successfully.'
-      }
-    }
-  },
-  'bessiemer-bessie-test': {
-    title: 'Bessie_test',
-    screenshotsDir: 'test-results/screenshots/bessiemer_bessie-test',
-    steps: {
-      '00_BESSIEMER_BESSIE_TEST_OPENED.png': {
-        title: 'Bessie_test opened',
-        description: 'The Bessiemer Bessie_test screen opened successfully.'
       }
     }
   },

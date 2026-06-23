@@ -6,7 +6,7 @@ const findDocumentActions = [
     label: 'Sales Order',
     testTitle: 'Sales Order Document',
     moduleId: 'sales',
-    testResultId: 'sales-so-with-credit-limit',
+    testResultId: 'sales-sales-order-transaction',
     moduleName: 'Sales Order',
     navigationModulePath: '../pages/base/moduleNavigation/SalesOrderMenuPage',
     navigationExportName: 'SalesOrderMenuPage',

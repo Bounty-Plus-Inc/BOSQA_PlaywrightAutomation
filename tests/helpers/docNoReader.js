@@ -72,7 +72,7 @@ async function readCurrentDocNo(pageOrPageObject, options = {}) {
   return '';
 }
 
-async function recordCurrentDocNo(moduleName, pageOrPageObject, status = 'Completed', testId = 'sales-so-with-credit-limit', options = {}) {
+async function recordCurrentDocNo(moduleName, pageOrPageObject, status = 'Completed', testId = 'sales-sales-order-transaction', options = {}) {
   const docNo = await readCurrentDocNo(pageOrPageObject, options);
   recordModuleDocNo(moduleName, docNo, status, testId);
   return docNo;
