@@ -3,7 +3,7 @@ const fs = require('fs');
 // This is for building safe file and folder paths.
 const path = require('path');
 
-function getSummaryPath(testId = 'sales-so-with-credit-limit') {
+function getSummaryPath(testId = 'sales-sales-order-transaction') {
   return path.resolve(process.cwd(), 'test-results', `${testId}-summary.json`);
 }
 
@@ -11,12 +11,12 @@ function ensureSummaryDir(testId) {
   fs.mkdirSync(path.dirname(getSummaryPath(testId)), { recursive: true });
 }
 
-function writeSummary(summary, testId = summary.testId || 'sales-so-with-credit-limit') {
+function writeSummary(summary, testId = summary.testId || 'sales-sales-order-transaction') {
   ensureSummaryDir(testId);
   fs.writeFileSync(getSummaryPath(testId), JSON.stringify(summary, null, 2));
 }
 
-function readSummary(testId = 'sales-so-with-credit-limit') {
+function readSummary(testId = 'sales-sales-order-transaction') {
   const summaryPath = getSummaryPath(testId);
   if (!fs.existsSync(summaryPath)) {
     return {
@@ -26,7 +26,7 @@ function readSummary(testId = 'sales-so-with-credit-limit') {
           ? 'Delivery Order'
           : testId === 'admin-approval'
             ? 'Approval'
-            : 'SO with Credit Limit',
+            : 'Sales Order',
       status: 'running',
       modules: []
     };
@@ -35,7 +35,7 @@ function readSummary(testId = 'sales-so-with-credit-limit') {
   return JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
 }
 
-function startRunSummary(testId = 'sales-so-with-credit-limit', title = 'SO with Credit Limit') {
+function startRunSummary(testId = 'sales-sales-order-transaction', title = 'Sales Order') {
   writeSummary({
     testId,
     title,
@@ -45,13 +45,20 @@ function startRunSummary(testId = 'sales-so-with-credit-limit', title = 'SO with
   }, testId);
 }
 
-function recordModuleDocNo(moduleName, docNo, status = 'Completed', testId = 'sales-so-with-credit-limit') {
+function recordModuleDocNo(
+  moduleName,
+  docNo,
+  status = 'Completed',
+  testId = 'sales-sales-order-transaction',
+  remarks = ''
+) {
   const summary = readSummary(testId);
   const modules = summary.modules.filter((entry) => entry.module !== moduleName);
   modules.push({
     module: moduleName,
     docNo: docNo || '',
     status,
+    remarks,
     recordedAt: new Date().toISOString()
   });
 
@@ -62,7 +69,7 @@ function recordModuleDocNo(moduleName, docNo, status = 'Completed', testId = 'sa
   }, testId);
 }
 
-function finishRunSummary(status = 'success', testId = 'sales-so-with-credit-limit') {
+function finishRunSummary(status = 'success', testId = 'sales-sales-order-transaction') {
   const summary = readSummary(testId);
   writeSummary({
     ...summary,
@@ -72,7 +79,7 @@ function finishRunSummary(status = 'success', testId = 'sales-so-with-credit-lim
   }, testId);
 }
 
-function getModuleDocNo(moduleName, testId = 'sales-so-with-credit-limit') {
+function getModuleDocNo(moduleName, testId = 'sales-sales-order-transaction') {
   const summary = readSummary(testId);
   return summary.modules.find((entry) => entry.module === moduleName)?.docNo || '';
 }

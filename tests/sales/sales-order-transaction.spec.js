@@ -12,10 +12,16 @@ const {
 } = require('../pages/base/moduleNavigation/CreditLimitCheckingMenuPage');
 // This is for opening the target BPI module.
 const { SalesOrderMenuPage } = require('../pages/base/moduleNavigation/SalesOrderMenuPage');
+// This is for opening the target BPI module.
+const {
+  TransactionApprovalMenuPage
+} = require('../pages/base/moduleNavigation/TransactionApprovalMenuPage');
 // This is for transaction screen actions and checks.
 const { SalesOrderPage } = require('../pages/transactions/SalesOrderPage');
 // This is for approval screen actions and checks.
 const { CreditLimitPage } = require('../pages/approvals/CreditLimitPage');
+// This is for approval screen actions and checks.
+const { TransactionApprovalPage } = require('../pages/approvals/TransactionApprovalPage');
 // This is for reading or filling business partner codes.
 const { getSalesBpCode } = require('../helpers/bpCode');
 // This is for reading item codes used by tests.
@@ -29,11 +35,11 @@ const {
   startRunSummary
 } = require('../helpers/runSummary');
 
-test('SO with Credit Limit', async ({ page }) => {
+test('Sales Order', async ({ page }) => {
   test.setTimeout(240000);
 
-  const testId = 'sales-so-with-credit-limit';
-  const testName = 'sales standard process';
+  const testId = 'sales-sales-order-transaction';
+  const testName = 'sales order transaction';
   const salesBpCode = getSalesBpCode();
   const salesItemCode = getSalesItemCode();
   const salesItemCount = Math.min(
@@ -45,9 +51,11 @@ test('SO with Credit Limit', async ({ page }) => {
   const salesOrderMenu = new SalesOrderMenuPage(page);
   const creditLimitCheckingMenu = new CreditLimitCheckingMenuPage(page);
   const creditLimitApprovalMenu = new CreditLimitApprovalMenuPage(page);
+  const transactionApprovalMenu = new TransactionApprovalMenuPage(page);
   const salesOrder = new SalesOrderPage(page);
   const creditLimit = new CreditLimitPage(page);
-  startRunSummary(testId, 'SO with Credit Limit');
+  const transactionApproval = new TransactionApprovalPage(page);
+  startRunSummary(testId, 'Sales Order');
 
   const runCreditLimitChecking = async (memory) => {
     await test.step('CREDIT LIMIT STANDARD', async () => {
@@ -78,6 +86,22 @@ test('SO with Credit Limit', async ({ page }) => {
       });
       recordModuleDocNo('Credit Limit Approval', memory.docNo, 'Approved', testId);
       await takeStepScreenshot(page, testName, '11_CREDIT_LIMIT_APPROVAL_DONE');
+    });
+  };
+
+  const runTransactionApproval = async (memory) => {
+    await test.step('APPROVAL TRANSACTION', async () => {
+      await transactionApprovalMenu.open();
+      await transactionApproval.expectLoaded();
+      recordModuleDocNo('Transaction Approval', memory.docNo, 'Opened', testId);
+      await takeStepScreenshot(page, testName, '08_TRANSACTION_APPROVAL_OPENED');
+
+      await transactionApproval.approveDocument(async () => {
+        await takeStepScreenshot(page, testName, '09_TRANSACTION_APPROVAL_SELECTED');
+      });
+
+      recordModuleDocNo('Transaction Approval', memory.docNo, 'Approved', testId);
+      await takeStepScreenshot(page, testName, '10_TRANSACTION_APPROVAL_DONE');
     });
   };
 
@@ -114,24 +138,19 @@ test('SO with Credit Limit', async ({ page }) => {
 
   await salesOrder.fillHeaderDetails({
     distributionChannel: 'OUTRIGHT',
-    divisionIndex: 1
+    divisionIndex: 1,
+    businessCenter: 'NCRCL'
   });
   await takeStepScreenshot(page, testName, '05_Header_Details_Filled');
 
   await salesOrder.saveAsDraft();
-  await takeStepScreenshot(page, testName, '06_Status_Draft');
+  await takeStepScreenshot(page, testName, '06_Status_Draft', 0);
 
   const addOutcome = await salesOrder.addOrUpdateUntilOpen();
 
-  if (!addOutcome.isOpen) {
-    console.log(`[SALES STANDARD] Add/Update status message: ${addOutcome.statusMsg || '(empty)'}`);
+  console.log(`[SALES ORDER] Add/Update status message: ${addOutcome.statusMsg || '(empty)'}`);
 
-    if (!addOutcome.isCreditLimitBlocked) {
-      await takeStepScreenshot(page, testName, 'ZZ_Status_Not_Open_Latest');
-      finishRunSummary('not-open', testId);
-      return;
-    }
-
+  if (addOutcome.isCreditLimitBlocked) {
     const memory = await salesOrder.readDocumentMemory();
     recordModuleDocNo('Sales Order', memory.docNo, 'Credit Limit Blocked', testId);
     console.log(
@@ -141,6 +160,23 @@ test('SO with Credit Limit', async ({ page }) => {
     await takeStepScreenshot(page, testName, 'ZZ_Credit_Limit_Blocking_Message');
     await runCreditLimitChecking(memory);
     finishRunSummary('success', testId);
+    return;
+  }
+
+  if (!addOutcome.isOpen) {
+    if (addOutcome.isProcessEndedSuccessfully) {
+      const memory = await salesOrder.readDocumentMemory();
+      recordModuleDocNo('Sales Order', memory.docNo, 'For Transaction Approval', testId);
+      console.log(
+        `[SALES ORDER] Process ended successfully; proceeding to Transaction Approval -> bpCode: ${memory.bpCode}, docNo: ${memory.docNo}`
+      );
+      await runTransactionApproval(memory);
+      finishRunSummary('success', testId);
+      return;
+    }
+
+    await takeStepScreenshot(page, testName, 'ZZ_Status_Not_Open_Latest');
+    finishRunSummary('not-open', testId);
     return;
   }
 

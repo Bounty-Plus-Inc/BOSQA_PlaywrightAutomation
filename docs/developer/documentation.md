@@ -271,7 +271,7 @@ Reads a document number from a previous summary.
 Use this when one test depends on a document created by another test.
 
 ```js
-const salesOrderDocNo = getModuleDocNo('Sales Order', 'sales-so-with-credit-limit');
+const salesOrderDocNo = getModuleDocNo('Sales Order', 'sales-sales-order-transaction');
 ```
 
 
@@ -1011,7 +1011,7 @@ Add one entry per test result ID.
 Test IDs are generated from the spec path.
 
 ```txt
-tests/sales/so-with-credit-limit.spec.js -> sales-so-with-credit-limit
+tests/sales/sales-order-transaction.spec.js -> sales-sales-order-transaction
 tests/sales/delivery-order.spec.js -> sales-delivery-order
 tests/admin/approval.spec.js -> admin-approval
 ```

@@ -67,7 +67,11 @@ class CreditLimitPage extends BasePage {
     await expect(resultTab).toBeVisible({ timeout: 10000 });
     await this.expectResultsTableVisible();
 
-    await this.selectSalesOrderInResults(docNo);
+    await this.selectSalesOrderInResults(docNo, {
+      refilter: async () => {
+        await filterButton.click();
+      }
+    });
     await approve();
     if (remarks) {
       await this.fillRemarks(remarks);
@@ -87,12 +91,12 @@ class CreditLimitPage extends BasePage {
     await expect(resultTable).toBeVisible({ timeout: 3000 });
   }
 
-  async selectSalesOrderInResults(docNo) {
+  async selectSalesOrderInResults(docNo, options = {}) {
     if (!docNo) {
       throw new Error('Unable to select credit-limit row because Sales Order docNo is empty');
     }
 
-    const row = await this.findSalesOrderResultRow(docNo);
+    const row = await this.findSalesOrderResultRow(docNo, options);
     await this.expectSalesOrderDocNoVisible(row.rowNumber, docNo);
 
     const checkbox = await this.findInAllFrames(`#${row.checkboxId}`, 10);
@@ -184,11 +188,16 @@ class CreditLimitPage extends BasePage {
       .toContain('O|Open');
   }
 
-  async findSalesOrderResultRow(docNo) {
+  async findSalesOrderResultRow(docNo, options = {}) {
     const resultListXPath =
       '/html/body/form[1]/table[2]/tbody/tr/td[2]/table/tbody/tr[4]/td/div/div[1]/div/div[2]';
 
-    for (let attempt = 0; attempt < 10; attempt += 1) {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      if (attempt > 0 && options.refilter) {
+        await options.refilter().catch(() => {});
+        await this.page.waitForTimeout(1000);
+      }
+
       for (const frame of this.page.frames()) {
         try {
           if (frame.isDetached()) continue;

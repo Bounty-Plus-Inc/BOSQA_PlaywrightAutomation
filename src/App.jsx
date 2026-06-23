@@ -85,6 +85,13 @@ function getStatusClass(status) {
   return 'warning';
 }
 
+function formatRemarks(remarks) {
+  const normalized = String(remarks || '').trim().toLowerCase();
+  if (normalized === 'met') return 'Validated successfully against the expected value.';
+  if (normalized === 'not met') return 'Actual value differs from the expected value.';
+  return remarks || '-';
+}
+
 function getModuleStats(tests) {
   return (tests || []).reduce(
     (stats, test) => {
@@ -104,6 +111,38 @@ function getModuleStats(tests) {
   );
 }
 
+function getDocumentationGroups(entries = []) {
+  return entries.reduce(
+    (groups, entry) => {
+      const lineMatch = /^Sales Order Row\s+(\d+)\s+(.+)$/i.exec(entry.module || '');
+      if (!lineMatch) {
+        groups.headers.push(entry);
+        return groups;
+      }
+
+      const rowNumber = Number.parseInt(lineMatch[1], 10);
+      const fieldName = lineMatch[2];
+      const existingGroup = groups.lineItems.find((lineItem) => lineItem.rowNumber === rowNumber);
+      const lineEntry = {
+        ...entry,
+        displayModule: fieldName
+      };
+
+      if (existingGroup) {
+        existingGroup.entries.push(lineEntry);
+      } else {
+        groups.lineItems.push({
+          rowNumber,
+          entries: [lineEntry]
+        });
+      }
+
+      return groups;
+    },
+    { headers: [], lineItems: [] }
+  );
+}
+
 export default function App() {
   const [theme, setTheme] = useState(() => {
     if (typeof window === 'undefined') return 'light';
@@ -117,6 +156,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedTest, setSelectedTest] = useState(null);
   const [selectedAction, setSelectedAction] = useState(null);
+  const [isRunInProgress, setIsRunInProgress] = useState(false);
   const [runStatus, setRunStatus] = useState('');
   const [toast, setToast] = useState(null);
   const [catalogStatus, setCatalogStatus] = useState('Loading tests...');
@@ -124,8 +164,10 @@ export default function App() {
   const [resultsStatus, setResultsStatus] = useState('');
   const [resultSteps, setResultSteps] = useState([]);
   const [resultSummary, setResultSummary] = useState(null);
+  const [expandedLineItems, setExpandedLineItems] = useState({});
   const [resultVideoUrl, setResultVideoUrl] = useState('');
   const [activeResultTest, setActiveResultTest] = useState(null);
+  const [activeResultSourceTest, setActiveResultSourceTest] = useState(null);
   const [itemCount, setItemCount] = useState(1);
   const [documentNumbers, setDocumentNumbers] = useState({});
   const [documentRunModes, setDocumentRunModes] = useState({});
@@ -178,6 +220,10 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
+  useEffect(() => {
+    setExpandedLineItems({});
+  }, [activeResultTest?.id, resultSummary?.finishedAt, resultSummary?.updatedAt]);
+
   const activeModule = testModules.find((module) => module.id === activePanel);
   const activeTestModule =
     testModules.find((module) => (module.tests || []).some((test) => test.id === activeResultTest?.id)) ||
@@ -197,6 +243,7 @@ export default function App() {
     setResultSteps([]);
     setResultSummary(null);
     setResultVideoUrl('');
+    setActiveResultSourceTest(null);
     setResultsStatus('');
     setRunStatus('');
   };
@@ -232,21 +279,25 @@ export default function App() {
     return true;
   };
 
-  const openRunModePopup = (test, action = null) => {
+  const openRunModePopup = (test, action = null, options = {}) => {
     if (!validateRunSelection(test, action)) return;
 
     setSelectedTest(test);
     setSelectedAction(action);
-    setActiveResultTest(test);
+    setIsRunInProgress(false);
+    if (!options.preservePreview) {
+      setActiveResultTest(test);
+    }
     setResultSteps([]);
     setResultSummary(null);
     setResultVideoUrl('');
+    setActiveResultSourceTest(null);
     setResultsStatus('');
     setRunStatus('');
   };
 
   const runSelectedTest = async (mode) => {
-    if (!selectedTest) return;
+    if (!selectedTest || isRunInProgress) return;
 
     const runLabel = selectedAction ? `${selectedTest.label}: ${selectedAction.label}` : selectedTest.label;
     const documentNumber = (documentNumbers[selectedTest.id] || '').trim();
@@ -268,7 +319,8 @@ export default function App() {
       return;
     }
 
-    setRunStatus(`Starting ${runLabel}...`);
+    setIsRunInProgress(true);
+    setRunStatus(`Running ${runLabel}...`);
     try {
       const response = await fetch('/api/run-test', {
         method: 'POST',
@@ -284,17 +336,24 @@ export default function App() {
         })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to start Playwright');
-      setRunStatus(`${runLabel} started.`);
-      setSelectedTest(null);
-      setSelectedAction(null);
+      if (!response.ok) throw new Error(data.error || 'Playwright run failed');
+      setRunStatus(`${runLabel} finished.`);
+      await openResults(selectedTest, { preserveActiveTest: Boolean(selectedTest.utilityLabel) });
     } catch (error) {
       showToast(error.message);
+      setRunStatus(`${runLabel} failed.`);
+    } finally {
+      setIsRunInProgress(false);
     }
   };
 
-  const openResults = async (test = activeResultTest) => {
-    setActiveResultTest(test);
+  const openResults = async (test = activeResultTest, options = {}) => {
+    if (!test) return;
+
+    if (!options.preserveActiveTest) {
+      setActiveResultTest(test);
+    }
+    setActiveResultSourceTest(test);
     setResultSteps([]);
     setResultSummary(null);
     setResultVideoUrl('');
@@ -362,6 +421,7 @@ export default function App() {
       setResultSteps([]);
       setResultSummary(null);
       setResultVideoUrl('');
+      setActiveResultSourceTest(null);
       setResultsStatus(`${module.label} results cleared.`);
     } catch (error) {
       showToast(error.message);
@@ -369,11 +429,12 @@ export default function App() {
   };
 
   const exportResultsToPdf = () => {
-    if (!activeResultTest) return;
+    const exportTest = activeResultSourceTest || activeResultTest;
+    if (!exportTest) return;
 
     const link = document.createElement('a');
-    link.href = `/api/test-pdf?testId=${encodeURIComponent(activeResultTest.resultId)}`;
-    link.download = `${activeResultTest.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-results.pdf`;
+    link.href = `/api/test-pdf?testId=${encodeURIComponent(exportTest.resultId)}`;
+    link.download = `${exportTest.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-results.pdf`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -473,36 +534,48 @@ export default function App() {
   );
 
   const renderTestActions = (test) => {
+    const dataInputs = test?.dataInputs || [];
+
     if (
       !test?.actions?.length &&
       !test?.documentNumberInput &&
       !test?.documentRunModes?.length &&
-      !test?.dataInputs?.length
+      !dataInputs.length
     ) {
       return null;
     }
 
     return (
       <div className="test-actions" aria-label={`${test.label} actions`}>
-        {(test.dataInputs || []).map((input) => (
-          <input
-            className="test-data-input"
-            type="text"
-            value={testInputValues[test.id]?.[input.id] || ''}
-            aria-label={`${test.label} ${input.label}`}
-            placeholder={input.label}
-            key={`${test.id}-${input.id}`}
-            onChange={(event) =>
-              setTestInputValues((current) => ({
-                ...current,
-                [test.id]: {
-                  ...(current[test.id] || {}),
-                  [input.id]: event.target.value
-                }
-              }))
-            }
-          />
-        ))}
+        {dataInputs.length > 0 && (
+          <>
+            <div className="test-action-title">
+              <span>Transaction</span>
+              <strong>{test.label}</strong>
+            </div>
+            <div className="test-data-controls">
+              {dataInputs.map((input) => (
+                <input
+                  className="test-data-input"
+                  type="text"
+                  value={testInputValues[test.id]?.[input.id] || ''}
+                  aria-label={`${test.label} ${input.label}`}
+                  placeholder={input.label}
+                  key={`${test.id}-${input.id}`}
+                  onChange={(event) =>
+                    setTestInputValues((current) => ({
+                      ...current,
+                      [test.id]: {
+                        ...(current[test.id] || {}),
+                        [input.id]: event.target.value
+                      }
+                    }))
+                  }
+                />
+              ))}
+            </div>
+          </>
+        )}
         {test.documentNumberInput && (
           <input
             className="document-number-input"
@@ -606,14 +679,16 @@ export default function App() {
                   ))}
                 </select>
               )}
-              <button
-                type="button"
-                onClick={() => openRunModePopup(utility, utility.action)}
-                aria-label={`Run ${utility.utilityLabel} ${utility.label}`}
-              >
-                <Icon name="play" />
-                <span>{utility.label}</span>
-              </button>
+              {!isRunInProgress && (
+                <button
+                  type="button"
+                  onClick={() => openRunModePopup(utility, utility.action, { preservePreview: true })}
+                  aria-label={`Run ${utility.utilityLabel} ${utility.label}`}
+                >
+                  <Icon name="play" />
+                  <span>Execute Document</span>
+                </button>
+              )}
             </div>
           </article>
         ))}
@@ -621,8 +696,42 @@ export default function App() {
     );
   };
 
+  const toggleLineItem = (rowNumber) => {
+    setExpandedLineItems((current) => ({
+      ...current,
+      [rowNumber]: !current[rowNumber]
+    }));
+  };
+
+  const renderDocumentationTable = (entries, label) => (
+    <section className="print-avoid module-table" aria-label={label}>
+      <table>
+        <thead>
+          <tr>
+            <th>Test Script</th>
+            <th>Expected Value</th>
+            <th>Actual Result</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map((entry) => (
+            <tr key={`${entry.module}-${entry.docNo}-${entry.status}`}>
+              <td>{entry.displayModule || entry.module}</td>
+              <td>{entry.docNo || '-'}</td>
+              <td>{entry.status}</td>
+              <td>{formatRemarks(entry.remarks)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+
   const renderPreview = () => {
     if (!activeResultTest) return null;
+    const documentationGroups = getDocumentationGroups(resultSummary?.modules || []);
+    const resultSourceTest = activeResultSourceTest || activeResultTest;
 
     return (
       <section className="print-results preview-panel" aria-label={`${activeResultTest.label} dashboard`}>
@@ -633,7 +742,6 @@ export default function App() {
               <h2>{activeResultTest.label}</h2>
             </div>
             <div className="module-overview-actions">
-              {renderTestUtilities(activeResultTest)}
               <button
                 type="button"
                 className="clear-button"
@@ -648,25 +756,31 @@ export default function App() {
           {activeResultTest.scaffoldGenerator ? (
             renderScaffoldGenerator()
           ) : (
-            <div className="selected-test-actions">
-              <div className="card-actions">
-                <button
-                  type="button"
-                  onClick={() => openRunModePopup(activeResultTest)}
-                  aria-label={`Run ${activeResultTest.label}`}
-                >
-                  <Icon name="play" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openResults(activeResultTest)}
-                  aria-label={`View ${activeResultTest.label}`}
-                  disabled={!activeResultTest.hasResultDetails}
-                >
-                  <Icon name="eye" />
-                </button>
+            <div className="module-action-grid">
+              <div className="selected-test-actions">
+                {renderTestActions(activeResultTest)}
+                <div className="card-actions">
+                  <button
+                    type="button"
+                    className="primary-icon-button transaction-run-button"
+                    onClick={() => openRunModePopup(activeResultTest)}
+                    aria-label={`Run ${activeResultTest.label}`}
+                  >
+                    <Icon name="play" />
+                    <span>Automate Transaction</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-icon-button"
+                    onClick={() => openResults(activeResultTest)}
+                    aria-label={`View ${activeResultTest.label}`}
+                    disabled={!activeResultTest.hasResultDetails}
+                  >
+                    <Icon name="eye" />
+                  </button>
+                </div>
               </div>
-              {renderTestActions(activeResultTest)}
+              {renderTestUtilities(activeResultTest)}
             </div>
           )}
         </section>
@@ -674,13 +788,17 @@ export default function App() {
         <div className="results-header">
           <div>
             <h2 id="results-title">Documentation Result:</h2>
-            <p>{resultSummary?.status || activeResultTest.label}</p>
+            <p>{resultSummary?.status || resultSourceTest.label}</p>
           </div>
           <div className="no-print results-actions">
             <button
               type="button"
-              onClick={() => openResults(activeResultTest)}
-              disabled={!activeResultTest?.hasResultDetails}
+              onClick={() =>
+                openResults(resultSourceTest, {
+                  preserveActiveTest: resultSourceTest.id !== activeResultTest.id
+                })
+              }
+              disabled={!resultSourceTest?.hasResultDetails}
             >
               <Icon name="results" />
               <span>Refresh</span>
@@ -695,29 +813,62 @@ export default function App() {
           </div>
         </div>
 
-        {resultsStatus && <p className="results-status">{resultsStatus}</p>}
+        {resultsStatus && (resultSummary?.modules?.length > 0 || resultSteps.length > 0) && (
+          <p className="results-status">{resultsStatus}</p>
+        )}
 
         <div className="result-list">
+          {resultsStatus && !resultSummary?.modules?.length && !resultSteps.length && (
+            <section className="empty-state" aria-live="polite">
+              <div className="empty-state-illustration" aria-hidden="true">
+                <Icon name="results" />
+              </div>
+              <h3>No Results Found</h3>
+              <p>{resultsStatus}</p>
+            </section>
+          )}
+
           {resultSummary?.modules?.length > 0 && (
-            <section className="print-avoid module-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Module</th>
-                    <th>Doc No</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {resultSummary.modules.map((entry) => (
-                    <tr key={`${entry.module}-${entry.docNo}`}>
-                      <td>{entry.module}</td>
-                      <td>{entry.docNo || '-'}</td>
-                      <td>{entry.status}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <section className="documentation-results" aria-label="Documentation result tables">
+              {documentationGroups.headers.length > 0 && (
+                <div className="documentation-group">
+                  <h3>Headers</h3>
+                  {renderDocumentationTable(documentationGroups.headers, 'Headers')}
+                </div>
+              )}
+
+              {documentationGroups.lineItems.length > 0 && (
+                <div className="documentation-group line-item-groups">
+                  {documentationGroups.lineItems
+                    .sort((a, b) => a.rowNumber - b.rowNumber)
+                    .map((lineItem) => {
+                      const isExpanded = Boolean(expandedLineItems[lineItem.rowNumber]);
+
+                      return (
+                        <section className="line-item-panel" key={`line-item-${lineItem.rowNumber}`}>
+                          <button
+                            type="button"
+                            className="line-item-toggle"
+                            onClick={() => toggleLineItem(lineItem.rowNumber)}
+                            aria-expanded={isExpanded}
+                          >
+                            <span>Line Item {lineItem.rowNumber}</span>
+                            <span>{isExpanded ? '-' : '+'}</span>
+                          </button>
+                          <div
+                            className={`line-item-content ${isExpanded ? 'open' : ''}`}
+                            aria-hidden={!isExpanded}
+                          >
+                            {renderDocumentationTable(
+                              lineItem.entries,
+                              `Line Item ${lineItem.rowNumber}`
+                            )}
+                          </div>
+                        </section>
+                      );
+                    })}
+                </div>
+              )}
             </section>
           )}
 
@@ -731,9 +882,9 @@ export default function App() {
             </article>
           ))}
 
-          {resultVideoUrl && (
+          {resultVideoUrl && (resultSummary?.modules?.length > 0 || resultSteps.length > 0) && (
             <section className="no-print result-video">
-              <video src={resultVideoUrl} controls autoPlay muted loop />
+              <video key={resultVideoUrl} src={resultVideoUrl} controls muted preload="metadata" />
             </section>
           )}
         </div>
@@ -852,22 +1003,30 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
+                  if (isRunInProgress) return;
                   setSelectedTest(null);
                   setSelectedAction(null);
                 }}
                 aria-label="Close"
+                disabled={isRunInProgress}
               >
                 <Icon name="close" />
               </button>
             </div>
-            <div className="mode-actions">
-              <button type="button" onClick={() => runSelectedTest('headed')}>
-                Headed
-              </button>
-              <button type="button" onClick={() => runSelectedTest('ui')}>
-                UI
-              </button>
-            </div>
+            {isRunInProgress ? (
+              <p className="run-progress" aria-live="polite">
+                Running automation...
+              </p>
+            ) : (
+              <div className="mode-actions">
+                <button type="button" onClick={() => runSelectedTest('headed')}>
+                  Headed
+                </button>
+                <button type="button" onClick={() => runSelectedTest('ui')}>
+                  UI
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

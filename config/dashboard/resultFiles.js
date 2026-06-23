@@ -2,6 +2,18 @@ import fs from 'fs';
 import path from 'path';
 import { testResults } from './testResults.js';
 
+const MIN_VIDEO_BYTES = 50 * 1024;
+
+function isStableVideo(filePath) {
+  if (!filePath.toLowerCase().endsWith('.webm')) return false;
+  if (filePath.split(path.sep).some((part) => part.startsWith('.playwright-artifacts'))) {
+    return false;
+  }
+
+  const stat = fs.statSync(filePath);
+  return stat.size >= MIN_VIDEO_BYTES;
+}
+
 export function findLatestVideo(rootDir) {
   if (!fs.existsSync(rootDir)) return null;
 
@@ -14,10 +26,12 @@ export function findLatestVideo(rootDir) {
         continue;
       }
 
-      if (entry.isFile() && entry.name.toLowerCase().endsWith('.webm')) {
+      if (entry.isFile() && isStableVideo(entryPath)) {
+        const stat = fs.statSync(entryPath);
         videos.push({
           path: entryPath,
-          modifiedAt: fs.statSync(entryPath).mtimeMs
+          modifiedAt: stat.mtimeMs,
+          size: stat.size
         });
       }
     }
@@ -41,16 +55,23 @@ export function findLatestTestVideo(testId, searchTerms = []) {
       continue;
     }
 
+    const matchedSpecificTerms = normalizedTerms
+      .filter((term) => term !== testId)
+      .filter((term) => entryName.includes(term));
+    const score = matchedSpecificTerms.reduce((total, term) => total + term.length, 0);
     const videoPath = findLatestVideo(path.join(testResultsDir, entry.name));
     if (videoPath) {
+      const stat = fs.statSync(videoPath);
       candidates.push({
         path: videoPath,
-        modifiedAt: fs.statSync(videoPath).mtimeMs
+        modifiedAt: stat.mtimeMs,
+        size: stat.size,
+        score
       });
     }
   }
 
-  return candidates.sort((a, b) => b.modifiedAt - a.modifiedAt)[0]?.path || null;
+  return candidates.sort((a, b) => b.score - a.score || b.modifiedAt - a.modifiedAt)[0]?.path || null;
 }
 
 export function readRunSummary(testId) {

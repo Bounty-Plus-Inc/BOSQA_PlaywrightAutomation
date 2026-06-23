@@ -18,10 +18,5 @@ export const testModules = {
     label: 'Framework',
     icon: 'file',
     order: 40
-  },
-  'bessiemer': {
-    label: 'Bessiemer',
-    icon: 'file',
-    order: 50
   }
 };

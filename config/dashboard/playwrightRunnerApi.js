@@ -51,6 +51,17 @@ function toRelativeAppPath(filePath) {
   return path.relative(process.cwd(), filePath).split(path.sep).join('/');
 }
 
+function getVideoVersionToken(videoPath) {
+  const stat = fs.statSync(videoPath);
+  return `${Math.round(stat.mtimeMs)}-${stat.size}`;
+}
+
+function getSummaryVideoSearchTerms(summary) {
+  return (summary?.modules || [])
+    .map((entry) => toSlug(entry.module))
+    .filter(Boolean);
+}
+
 function getSafeGeneratedGuide(fileName) {
   const generatedDir = path.resolve(process.cwd(), 'docs', 'generated');
   const guidePath = path.resolve(generatedDir, fileName || '');
@@ -206,19 +217,47 @@ export function createPlaywrightRunnerApi() {
             BPI_FIND_DOCUMENT_MODE: documentRunMode
           },
           shell: true,
-          detached: true,
-          stdio: 'ignore'
+          stdio: ['ignore', 'pipe', 'pipe']
         });
 
-        child.unref();
-        sendJson(res, 200, {
-          ok: true,
-          spec,
-          mode,
-          itemCount,
-          actionId,
-          documentNumber,
-          documentRunMode
+        let hasResponded = false;
+        let output = '';
+        const appendOutput = (chunk) => {
+          output = `${output}${chunk.toString()}`.slice(-8000);
+        };
+        const reply = (statusCode, data) => {
+          if (hasResponded) return;
+          hasResponded = true;
+          sendJson(res, statusCode, data);
+        };
+
+        child.stdout?.on('data', appendOutput);
+        child.stderr?.on('data', appendOutput);
+        child.on('error', (error) => {
+          reply(500, { error: `Unable to start Playwright: ${error.message}` });
+        });
+        child.on('close', (exitCode) => {
+          const payload = {
+            ok: exitCode === 0,
+            spec,
+            mode,
+            itemCount,
+            actionId,
+            documentNumber,
+            documentRunMode,
+            exitCode,
+            output
+          };
+
+          if (exitCode === 0) {
+            reply(200, payload);
+            return;
+          }
+
+          reply(500, {
+            ...payload,
+            error: `Playwright finished with exit code ${exitCode}`
+          });
         });
       });
 
@@ -390,10 +429,17 @@ export function createPlaywrightRunnerApi() {
           return;
         }
 
-        const latestVideoPath = findLatestTestVideo(testId, getVideoSearchTerms(testId));
+        const latestVideoPath = findLatestTestVideo(testId, [
+          ...getVideoSearchTerms(testId),
+          ...getSummaryVideoSearchTerms(summary)
+        ]);
         sendJson(res, 200, {
           summary,
-          videoUrl: latestVideoPath ? `/api/test-video?testId=${encodeURIComponent(testId)}` : ''
+          videoUrl: latestVideoPath
+            ? `/api/test-video?testId=${encodeURIComponent(testId)}&v=${encodeURIComponent(
+                getVideoVersionToken(latestVideoPath)
+              )}`
+            : ''
         });
       });
 
@@ -454,7 +500,11 @@ export function createPlaywrightRunnerApi() {
         }
 
         const testResultsDir = path.resolve(process.cwd(), 'test-results');
-        const latestVideoPath = findLatestTestVideo(testId, getVideoSearchTerms(testId));
+        const summary = readRunSummary(testId);
+        const latestVideoPath = findLatestTestVideo(testId, [
+          ...getVideoSearchTerms(testId),
+          ...getSummaryVideoSearchTerms(summary)
+        ]);
 
         if (!latestVideoPath || !latestVideoPath.startsWith(testResultsDir)) {
           res.statusCode = 404;
@@ -465,6 +515,10 @@ export function createPlaywrightRunnerApi() {
         const stat = fs.statSync(latestVideoPath);
         const range = req.headers.range;
         res.setHeader('Content-Type', 'video/webm');
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
 
         if (!range) {
           res.statusCode = 200;
@@ -485,7 +539,6 @@ export function createPlaywrightRunnerApi() {
         }
 
         res.statusCode = 206;
-        res.setHeader('Accept-Ranges', 'bytes');
         res.setHeader('Content-Length', end - start + 1);
         res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
         fs.createReadStream(latestVideoPath, { start, end }).pipe(res);

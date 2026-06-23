@@ -1,7 +1,7 @@
-# SO WITH CREDIT LIMIT - Visual Documentation
+# Sales Order Transaction - Visual Documentation
 
 Screenshot folder (latest run):
-- `test-results/screenshots/sales_standard_process/`
+- `test-results/screenshots/sales_order_transaction/`
 
 ## Flow Visuals
 1. `00_SalesOrder_Page_Opened.png`
