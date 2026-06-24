@@ -29,7 +29,11 @@ const { takeStepScreenshot } = require('../helpers/screenshots');
 // This is for storing captured document data.
 const { writeCapturedDocument } = require('../helpers/capturedDocumentStore');
 // This is for reading current module header fields and line items.
-const { readCurrentDocumentData } = require('../lineItemReaders/documentLineItems');
+const { readDocumentData } = require('../helpers/documentReaders/documentDataReader');
+// This is for Sales Order document header and line item field definitions.
+const {
+  SalesOrderDocumentData
+} = require('../helpers/documentReaders/config/SalesOrderDocumentData');
 // This is for listing Find Document dropdown options.
 const { findDocumentActions } = require('./findDocumentActions');
 // This is for recording the test result summary.
@@ -63,6 +67,10 @@ function recordValidationResult(testId, testScript, expectedValue, actualValue) 
       : 'Actual value differs from the expected value.';
   recordModuleDocNo(testScript, expected || '-', actual || '-', testId, remarks);
 }
+
+const documentDataConfigsByActionId = {
+  'sales-order': SalesOrderDocumentData
+};
 
 async function replicateSalesOrderTransaction({ capturedData, page, testId, testName }) {
   const salesOrderMenu = new SalesOrderMenuPage(page);
@@ -202,7 +210,8 @@ test.describe('Find Document', () => {
       await takeStepScreenshot(page, testName, action.loadedScreenshot);
 
       if (documentMode === 'replicate') {
-        const capturedData = await readCurrentDocumentData(page);
+        const documentDataConfig = documentDataConfigsByActionId[action.id] || {};
+        const capturedData = await readDocumentData(page, documentDataConfig);
         const lineItems = capturedData.lineItems || [];
         writeCapturedDocument(action.moduleName, documentNo, {
           source: 'Find Document',
