@@ -7,7 +7,7 @@ module.exports = defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  workers: 2,
   reporter: 'html',
   use: {
     baseURL: process.env.BPI_BASE_URL || 'http://10.2.0.178:81',

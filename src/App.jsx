@@ -252,7 +252,14 @@ export default function App() {
     const documentNumber = (documentNumbers[test.id] || '').trim();
     const documentRunMode = documentRunModes[test.id] || test.documentRunModes?.[0]?.id || '';
     const runLabel = action ? `${test.label}: ${action.label}` : test.label;
-    const missingInput = (test.dataInputs || []).find(
+    const cardInputs = (test.cards || []).flatMap((card) => card.fields || []);
+    const testInputs = [
+      ...(test.dataInputs || []),
+      ...cardInputs.filter(
+        (cardInput) => !(test.dataInputs || []).some((input) => input.id === cardInput.id)
+      )
+    ];
+    const missingInput = testInputs.find(
       (input) => input.required && !(testInputValues[test.id]?.[input.id] || '').trim()
     );
 
@@ -533,6 +540,102 @@ export default function App() {
     </div>
   );
 
+  const updateTestInputValue = (testId, inputId, value) => {
+    setTestInputValues((current) => ({
+      ...current,
+      [testId]: {
+        ...(current[testId] || {}),
+        [inputId]: value
+      }
+    }));
+  };
+
+  const runCardButtonAction = (test, button) => {
+    if (button.action === 'viewResults') {
+      openResults(test);
+      return;
+    }
+
+    openRunModePopup(test);
+  };
+
+  const renderConfiguredField = (test, field) => {
+    const fieldValue = testInputValues[test.id]?.[field.id] || '';
+
+    if (field.type === 'dropdown') {
+      return (
+        <select
+          className="test-action-select"
+          value={fieldValue}
+          aria-label={`${test.label} ${field.label}`}
+          key={`${test.id}-${field.id}`}
+          onChange={(event) => updateTestInputValue(test.id, field.id, event.target.value)}
+        >
+          <option value="">{field.placeholder || field.label}</option>
+          {(field.options || []).map((option) => (
+            <option value={option.value} key={`${field.id}-${option.value}`}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    return (
+      <input
+        className="test-data-input"
+        type={field.type === 'number' ? 'number' : 'text'}
+        value={fieldValue}
+        aria-label={`${test.label} ${field.label}`}
+        placeholder={field.placeholder || field.label}
+        key={`${test.id}-${field.id}`}
+        onChange={(event) => updateTestInputValue(test.id, field.id, event.target.value)}
+      />
+    );
+  };
+
+  const renderConfiguredCards = (test) => {
+    if (!test?.cards?.length) return null;
+
+    return (
+      <div className="configured-card-grid">
+        {test.cards.map((card) => (
+          <article className="configured-test-card" key={`${test.id}-${card.id}`}>
+            <div className="configured-card-title">
+              <span>{card.title}</span>
+              <strong>{card.subtitle || test.label}</strong>
+            </div>
+            {!!card.fields?.length && (
+              <div className="configured-card-fields">
+                {card.fields.map((field) => renderConfiguredField(test, field))}
+              </div>
+            )}
+            {!!card.buttons?.length && (
+              <div className="configured-card-actions">
+                {card.buttons.map((button) => (
+                  <button
+                    type="button"
+                    className={button.variant === 'secondary' ? 'secondary-icon-button' : 'primary-icon-button'}
+                    onClick={() => runCardButtonAction(test, button)}
+                    aria-label={button.label}
+                    disabled={
+                      (button.action === 'runTest' && isRunInProgress) ||
+                      (button.action === 'viewResults' && !test.hasResultDetails)
+                    }
+                    key={`${card.id}-${button.id}`}
+                  >
+                    <Icon name={button.icon || 'play'} />
+                    {button.variant !== 'secondary' && <span>{button.label}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    );
+  };
+
   const renderTestActions = (test) => {
     const dataInputs = test?.dataInputs || [];
 
@@ -562,15 +665,7 @@ export default function App() {
                   aria-label={`${test.label} ${input.label}`}
                   placeholder={input.label}
                   key={`${test.id}-${input.id}`}
-                  onChange={(event) =>
-                    setTestInputValues((current) => ({
-                      ...current,
-                      [test.id]: {
-                        ...(current[test.id] || {}),
-                        [input.id]: event.target.value
-                      }
-                    }))
-                  }
+                  onChange={(event) => updateTestInputValue(test.id, input.id, event.target.value)}
                 />
               ))}
             </div>
@@ -757,29 +852,33 @@ export default function App() {
             renderScaffoldGenerator()
           ) : (
             <div className="module-action-grid">
-              <div className="selected-test-actions">
-                {renderTestActions(activeResultTest)}
-                <div className="card-actions">
-                  <button
-                    type="button"
-                    className="primary-icon-button transaction-run-button"
-                    onClick={() => openRunModePopup(activeResultTest)}
-                    aria-label={`Run ${activeResultTest.label}`}
-                  >
-                    <Icon name="play" />
-                    <span>Automate Transaction</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-icon-button"
-                    onClick={() => openResults(activeResultTest)}
-                    aria-label={`View ${activeResultTest.label}`}
-                    disabled={!activeResultTest.hasResultDetails}
-                  >
-                    <Icon name="eye" />
-                  </button>
+              {activeResultTest.cards?.length ? (
+                renderConfiguredCards(activeResultTest)
+              ) : (
+                <div className="selected-test-actions">
+                  {renderTestActions(activeResultTest)}
+                  <div className="card-actions">
+                    <button
+                      type="button"
+                      className="primary-icon-button transaction-run-button"
+                      onClick={() => openRunModePopup(activeResultTest)}
+                      aria-label={`Run ${activeResultTest.label}`}
+                    >
+                      <Icon name="play" />
+                      <span>Automate Transaction</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary-icon-button"
+                      onClick={() => openResults(activeResultTest)}
+                      aria-label={`View ${activeResultTest.label}`}
+                      disabled={!activeResultTest.hasResultDetails}
+                    >
+                      <Icon name="eye" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
               {renderTestUtilities(activeResultTest)}
             </div>
           )}

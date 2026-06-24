@@ -59,7 +59,16 @@ class SalesOrder extends SalesOrderPage {
     await this.recreateShipToHeaderFields(headerFields);
 
     for (const [index, lineItem] of lineItems.entries()) {
-      await this.recreateLineItem(lineItem, hooks, index + 1);
+      await this.recreateLineItem(
+        {
+          ...lineItem,
+          businessCenter:
+            this.readCapturedLineValue(lineItem, 'businessCenter', 'uBusinessCenter', 'u_business_center') ||
+            headerFields.businessCenter
+        },
+        hooks,
+        index + 1
+      );
     }
 
     await this.recreateUdfHeaderDropdowns(headerFields, reportValidation);
@@ -233,7 +242,8 @@ class SalesOrder extends SalesOrderPage {
 
     await this.selectAndValidateWarehouse({
       warehouseCode,
-      warehouseName
+      warehouseName,
+      rowNumber: targetRowNumber
     });
 
     await this.selectAndValidateProfitCenter({
@@ -492,7 +502,9 @@ class SalesOrder extends SalesOrderPage {
 
   async selectAndValidateLineSelect(selector, value, fieldName) {
     if (!value) {
-      throw new Error(`Unable to recreate line because captured ${fieldName} is empty.`);
+      throw new Error(
+        `Unable to recreate line because captured ${fieldName} is empty on both the row and header.`
+      );
     }
 
     const select = await this.findInAllFrames(selector, 20);
@@ -504,11 +516,29 @@ class SalesOrder extends SalesOrderPage {
     };
   }
 
-  async selectAndValidateWarehouse({ warehouseCode, warehouseName }) {
+  async selectAndValidateWarehouse({ warehouseCode, warehouseName, rowNumber }) {
     const warehouseInputSelector = 'input#df_whscodeT1[name="df_whscodeT1"], input#df_whscodeT1';
-    await WarehouseCFL.selectFromLookup(this, warehouseCode, {
-      resultTimeout: 5000
-    });
+    const warehouseInput = await this.findInAllFrames(warehouseInputSelector, 20);
+    const currentWarehouseCode = this.normalizeComparableText(
+      await warehouseInput.inputValue().catch(() => '')
+    );
+    let usedCfl = false;
+
+    if (currentWarehouseCode !== warehouseCode) {
+      console.log(
+        `[SALES ORDER RECREATE] Row ${rowNumber || '?'} warehouse is "${currentWarehouseCode || '(empty)'}"; selecting transaction warehouse "${warehouseCode}".`
+      );
+      await this.clearLineInput(warehouseInput);
+      await WarehouseCFL.selectFromLookup(this, warehouseCode, {
+        resultTimeout: 5000
+      });
+      await this.ensureLineInputValue(
+        warehouseInputSelector,
+        warehouseCode,
+        `row ${rowNumber || '?'} warehouseCode`
+      );
+      usedCfl = true;
+    }
 
     const warehouseCodeResult = await this.expectLineInputValue(
       warehouseInputSelector,
@@ -526,8 +556,33 @@ class SalesOrder extends SalesOrderPage {
       actualWarehouseCode: warehouseCodeResult.actualValue,
       expectedWarehouseName: warehouseNameResult.expectedValue,
       actualWarehouseName: warehouseNameResult.actualValue,
-      usedCfl: true
+      usedCfl
     };
+  }
+
+  async clearLineInput(locator) {
+    await locator.evaluate((node) => {
+      node.value = '';
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+      node.dispatchEvent(new Event('change', { bubbles: true }));
+      node.dispatchEvent(new Event('blur', { bubbles: true }));
+    });
+  }
+
+  async ensureLineInputValue(selector, expectedValue, fieldName) {
+    const input = await this.findInAllFrames(selector, 20);
+    const currentValue = this.normalizeComparableText(await input.inputValue().catch(() => ''));
+    if (currentValue === expectedValue) return;
+
+    console.log(
+      `[SALES ORDER RECREATE] CFL did not update ${fieldName}; setting "${expectedValue}" directly.`
+    );
+    await input.evaluate((node, value) => {
+      node.value = value;
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+      node.dispatchEvent(new Event('change', { bubbles: true }));
+      node.dispatchEvent(new Event('blur', { bubbles: true }));
+    }, expectedValue);
   }
 
   async selectAndValidateProfitCenter({ profitCenterCode, profitCenterName }) {
