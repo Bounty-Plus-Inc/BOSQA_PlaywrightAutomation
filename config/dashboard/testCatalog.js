@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { readRunSummary } from './resultFiles.js';
+import { testCards } from './testCards/index.js';
 import { testModules } from './testModules.js';
 import { testResults } from './testResults.js';
 
@@ -124,6 +125,7 @@ export function getTestCatalog() {
       status: summary?.status || 'not-run',
       modules: summary?.modules || [],
       dataInputs: result?.dataInputs || [],
+      cards: testCards[resultId] || [],
       actions: result?.actions || [],
       documentRunModes: result?.documentRunModes || [],
       documentNumberInput: Boolean(result?.documentNumberInput),
@@ -174,6 +176,7 @@ export function getTestCatalog() {
     status: 'ready',
     modules: [],
     dataInputs: [],
+    cards: [],
     actions: [],
     documentRunModes: [],
     documentNumberInput: false,

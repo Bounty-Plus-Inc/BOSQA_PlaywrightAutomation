@@ -294,6 +294,16 @@ export const testResults = {
       }
     }
   },
+  'testing-module-testing-script': {
+    title: 'Testing Script',
+    screenshotsDir: 'test-results/screenshots/testing-module_testing-script',
+    steps: {
+      '00_TESTING_MODULE_TESTING_SCRIPT_OPENED.png': {
+        title: 'Testing Script opened',
+        description: 'The Testing Module Testing Script screen opened successfully.'
+      }
+    }
+  },
   'utilities-find-document': {
     title: 'Find Document',
     screenshotsDir: 'test-results/screenshots/find_document',

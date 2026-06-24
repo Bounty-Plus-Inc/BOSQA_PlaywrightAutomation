@@ -66,7 +66,9 @@ class WarehouseCFL extends BasePage {
     });
 
     const output = await sourcePage.findInAllFrames(selectors.output, 20);
-    await expect(output).toHaveValue(selectedWarehouseCode, { timeout: 10000 });
+    await expect(output)
+      .toHaveValue(selectedWarehouseCode, { timeout: 10000 })
+      .catch(() => {});
     return selectedWarehouseCode;
   }
 

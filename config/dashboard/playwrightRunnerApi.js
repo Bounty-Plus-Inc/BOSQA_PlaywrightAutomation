@@ -187,7 +187,16 @@ export function createPlaywrightRunnerApi() {
         }
 
         const inputEnv = {};
-        for (const input of selectedTest.dataInputs || []) {
+        const cardInputs = (selectedTest.cards || []).flatMap((card) => card.fields || []);
+        const selectedTestInputs = [
+          ...(selectedTest.dataInputs || []),
+          ...cardInputs.filter(
+            (cardInput) =>
+              !(selectedTest.dataInputs || []).some((input) => input.id === cardInput.id)
+          )
+        ];
+
+        for (const input of selectedTestInputs) {
           const value = String(dataInputs[input.id] || '').trim();
           if (input.required && !value) {
             sendJson(res, 400, { error: `${input.label} is required` });

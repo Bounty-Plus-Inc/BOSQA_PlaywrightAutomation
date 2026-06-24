@@ -982,6 +982,94 @@ a {
   flex-wrap: wrap;
 }
 
+.configured-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: var(--space-2);
+}
+
+.configured-test-card {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 156px;
+  border: 1px solid var(--soft-border);
+  border-radius: var(--radius-card);
+  background: var(--soft-bg);
+  padding: var(--space-2);
+}
+
+.configured-card-title {
+  display: grid;
+  gap: var(--space-1);
+  align-self: start;
+}
+
+.configured-card-title span {
+  color: var(--status);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.configured-card-title strong {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.configured-card-fields {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.configured-card-fields .test-data-input,
+.configured-card-fields .test-action-select {
+  width: 100%;
+  max-width: none;
+}
+
+.configured-card-actions {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) var(--control-sm);
+  gap: var(--space-1);
+  align-self: end;
+  grid-column: 2;
+  min-width: 0;
+}
+
+.configured-card-actions button {
+  min-height: var(--control-sm);
+}
+
+.configured-card-actions .primary-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-gradient);
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 950;
+  padding: 0 var(--space-2);
+}
+
+.configured-card-actions .secondary-icon-button {
+  border: 1px solid var(--input-border);
+  border-radius: 999px;
+  background: var(--control-bg);
+  color: var(--accent);
+}
+
+.configured-card-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .scaffold-tool {
   display: grid;
   gap: var(--space-2);
