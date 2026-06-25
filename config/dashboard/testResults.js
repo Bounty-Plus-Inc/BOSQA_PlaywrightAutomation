@@ -70,6 +70,45 @@ function getFindDocumentSteps() {
       title: 'Credit Limit Approval completed',
       description: 'Credit Limit Approval was saved successfully for the recreated Sales Order.'
     },
+    '12_RECREATE_DELIVERY_ORDER_OPENED.png': {
+      title: 'Delivery Order opened',
+      description:
+        'After approval, the Delivery Order module opened for Copy From processing.'
+    },
+    '13_RECREATE_DELIVERY_BP_CFL_POPUP.png': {
+      title: 'Delivery BP Code lookup opened',
+      description:
+        'The Delivery Order Business Partner CFL opened before selecting the Sales Order customer.'
+    },
+    '14_RECREATE_DELIVERY_BP_SELECTED.png': {
+      title: 'Delivery BP Code selected',
+      description:
+        'The Sales Order customer was selected and returned to the Delivery Order BP Code field.'
+    },
+    '15_RECREATE_DELIVERY_COPY_FROM_POPUP.png': {
+      title: 'Copy From Sales Order opened',
+      description:
+        'The Delivery Order Copy From popup opened for selecting the approved Sales Order.'
+    },
+    '16_RECREATE_DELIVERY_SOURCE_SELECTED.png': {
+      title: 'Copy From source selected',
+      description:
+        'The recreated Sales Order document number was selected in the Copy From popup.'
+    },
+    '17_RECREATE_DELIVERY_ITEMS_LOADED.png': {
+      title: 'Copy From line items loaded',
+      description:
+        'The source Sales Order line items loaded after choosing the document header.'
+    },
+    '18_RECREATE_DELIVERY_ITEMS_SELECTED.png': {
+      title: 'Copy From line items selected',
+      description: 'The available Sales Order line item was selected for copying.'
+    },
+    '19_RECREATE_DELIVERY_ITEMS_COPIED.png': {
+      title: 'Sales Order copied to Delivery',
+      description:
+        'The selected Sales Order items were copied back into the Delivery Order form.'
+    },
     'ZZ_RECREATE_CREDIT_LIMIT_BLOCKING_MESSAGE.png': {
       title: 'Credit limit blocking message captured',
       description:
@@ -86,6 +125,7 @@ export const testResults = {
   'sales-sales-order-transaction': {
     title: 'Sales Order',
     screenshotsDir: 'test-results/screenshots/sales_order_transaction',
+    itemCountEnvKey: 'BPI_SALES_ITEM_COUNT',
     dataInputs: [
       {
         id: 'customerCode',
@@ -188,6 +228,45 @@ export const testResults = {
         title: 'Credit limit approval completed',
         description:
           'The matching Sales Order was approved from Credit Limit Approval and saved successfully.'
+      },
+      '12_DELIVERY_ORDER_OPENED.png': {
+        title: 'Delivery Order opened',
+        description:
+          'After approval, the Delivery Order module opened for Copy From processing.'
+      },
+      '13_DELIVERY_BP_CFL_POPUP.png': {
+        title: 'Delivery BP Code lookup opened',
+        description:
+          'The Delivery Order Business Partner CFL opened before selecting the Sales Order customer.'
+      },
+      '14_DELIVERY_BP_SELECTED.png': {
+        title: 'Delivery BP Code selected',
+        description:
+          'The Sales Order customer was selected and returned to the Delivery Order BP Code field.'
+      },
+      '15_DELIVERY_COPY_FROM_POPUP.png': {
+        title: 'Copy From Sales Order opened',
+        description:
+          'The Delivery Order Copy From popup opened for selecting the approved Sales Order.'
+      },
+      '16_DELIVERY_SOURCE_SELECTED.png': {
+        title: 'Copy From source selected',
+        description:
+          'The created Sales Order document number was selected in the Copy From popup.'
+      },
+      '17_DELIVERY_ITEMS_LOADED.png': {
+        title: 'Copy From line items loaded',
+        description:
+          'The source Sales Order line items loaded after choosing the document header.'
+      },
+      '18_DELIVERY_ITEMS_SELECTED.png': {
+        title: 'Copy From line items selected',
+        description: 'The available Sales Order line item was selected for copying.'
+      },
+      '19_DELIVERY_ITEMS_COPIED.png': {
+        title: 'Sales Order copied to Delivery',
+        description:
+          'The selected Sales Order items were copied back into the Delivery Order form.'
       }
 
     }
@@ -195,71 +274,23 @@ export const testResults = {
   'sales-delivery-order': {
     title: 'Delivery Order',
     screenshotsDir: 'test-results/screenshots/delivery_order',
-    dataInputs: [
-      {
-        id: 'customerCode',
-        label: 'Customer Code',
-        envKey: 'BPI_DELIVERY_BPCODE',
-        required: true
-      }
-    ],
+    dataInputs: [],
     steps: {
       '00_DELIVERY_ORDER_OPENED.png': {
         title: 'Delivery order screen opened',
         description: 'The Delivery Order standard transaction module opened successfully.'
       },
-      '01_DELIVERY_BP_COPY_FROM_READY.png': {
-        title: 'Business partner entered',
-        description:
-          'The BP Code was entered and the Copy From button was visible before opening source documents.'
+      '01_DELIVERY_BP_CFL_POPUP.png': {
+        title: 'Business Partner CFL opened',
+        description: 'The Delivery Order BP Code lookup opened before selecting the customer.'
       },
-      '02_DELIVERY_SALES_ORDERS_POPUP.png': {
-        title: 'Sales Orders popup opened',
-        description:
-          'The Copy From menu was opened and Sales Orders was selected, opening the source document popup.'
+      '02_DELIVERY_BP_SELECTED.png': {
+        title: 'Business partner selected',
+        description: 'The previous Sales Order BP Code was selected and returned to the Delivery Order form.'
       },
-      '03_DELIVERY_SO_HEADER_SELECTED.png': {
-        title: 'Sales Order header selected',
-        description:
-          'The Choose button was visible and the matching Sales Order header row was selected in the popup.'
-      },
-      '04_DELIVERY_SO_ITEMS_LOADED.png': {
-        title: 'Sales Order items loaded',
-        description:
-          'The selected Sales Order populated the item table in the popup before item selection.'
-      },
-      '05_DELIVERY_SO_ITEMS_SELECTED.png': {
-        title: 'Sales Order items selected',
-        description:
-          'The copied Sales Order item checkbox was selected before finishing the popup.'
-      },
-      '06_DELIVERY_ITEMS_COPIED_TO_MAIN.png': {
-        title: 'Delivery Order line populated',
-        description:
-          'The popup finished and the Delivery Order line item code was populated on the main form.'
-      },
-      '07_DELIVERY_DOCSERIES_PRIMARY.png': {
-        title: 'Primary document series selected',
-        description: 'The Delivery Order document series was changed to Primary.'
-      },
-      '08_DELIVERY_INV_DEL_DATE_TODAY.png': {
-        title: 'Invoice delivery date selected',
-        description:
-          'The General (UDF) tab was opened and the invoice delivery date calendar selected Today.'
-      },
-      '09_DELIVERY_SHIP_TO_ADDRESS_FILLED.png': {
-        title: 'Logistics details completed',
-        description:
-          'The Logistics tab was opened, SHIP TO and DELIVERY were selected, and the ship-to address was populated.'
-      },
-      '10_DELIVERY_TRUCKER_AND_PLATE_SELECTED.png': {
-        title: 'Trucker and plate selected',
-        description:
-          'The General (UDF) tab was reopened, the trucker code lookup selected 000, and the plate number lookup selected the first row.'
-      },
-      '11_DELIVERY_SAVED_AS_DRAFT.png': {
-        title: 'Delivery Order saved as draft',
-        description: 'The Delivery Order was saved as draft and the page reloaded with draft status.'
+      '03_DELIVERY_COPY_FROM_POPUP.png': {
+        title: 'Copy From popup opened',
+        description: 'The Copy From menu opened the source document popup successfully.'
       }
     }
   },
