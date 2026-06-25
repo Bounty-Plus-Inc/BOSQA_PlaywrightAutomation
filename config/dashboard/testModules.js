@@ -18,5 +18,15 @@ export const testModules = {
     label: 'Framework',
     icon: 'file',
     order: 40
+  },
+  'testing-module': {
+    label: 'Testing Module',
+    icon: 'file',
+    order: 50
+  },
+  inventory: {
+    label: 'Inventory',
+    icon: 'file',
+    order: 60
   }
 };

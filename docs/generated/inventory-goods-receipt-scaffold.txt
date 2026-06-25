@@ -1,0 +1,47 @@
+Scaffold Guide
+
+Module: Inventory
+Module ID: inventory
+Test Case: Goods Receipt
+Test ID: inventory-goods-receipt
+
+Created Files:
+- C:\Users\maudarbe\Documents\GitHub\BOSQA_PlaywrightAutomation\tests\inventory\goods-receipt.spec.js
+- C:\Users\maudarbe\Documents\GitHub\BOSQA_PlaywrightAutomation\tests\pages\base\moduleNavigation\InventoryMenuPage.js
+- C:\Users\maudarbe\Documents\GitHub\BOSQA_PlaywrightAutomation\tests\pages\transactions\GoodsReceiptPage.js
+
+Updated Files:
+- C:\Users\maudarbe\Documents\GitHub\BOSQA_PlaywrightAutomation\config\dashboard\testModules.js
+- C:\Users\maudarbe\Documents\GitHub\BOSQA_PlaywrightAutomation\config\dashboard\testResults.js
+
+Skipped Existing Files:
+- None
+
+What each file does:
+
+- tests/inventory/goods-receipt.spec.js
+  Main Playwright test flow. Fill in the actual business steps here.
+
+- tests/pages/base/moduleNavigation/InventoryMenuPage.js
+  Opens the target BPI module. Replace the TODO with real menu selectors.
+
+- tests/pages/transactions/GoodsReceiptPage.js
+  Page object for screen-specific actions and assertions.
+
+- tests/lineItemReaders/documentLineItems.js
+  Shared universal line-item reader used by Find Document replicate mode.
+
+- config/dashboard/testModules.js
+  Adds the dashboard module button when the module is new.
+
+- config/dashboard/testResults.js
+  Adds dashboard result metadata and screenshot names.
+
+Next Steps:
+
+1. Fill in menu navigation selectors in tests/pages/base/moduleNavigation/InventoryMenuPage.js.
+2. Add transaction actions in tests/pages/transactions/GoodsReceiptPage.js.
+3. Add test steps in tests/inventory/goods-receipt.spec.js.
+4. Run: node --check tests/inventory/goods-receipt.spec.js
+5. Run: npm run build
+6. Run: npx playwright test tests/inventory/goods-receipt.spec.js --headed

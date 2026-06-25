@@ -325,6 +325,30 @@ export const testResults = {
       }
     }
   },
+  'testing-module-testing-script': {
+    title: 'Testing Script',
+    screenshotsDir: 'test-results/screenshots/testing-module_testing-script',
+    steps: {
+      '00_TESTING_MODULE_TESTING_SCRIPT_OPENED.png': {
+        title: 'Testing Script opened',
+        description: 'The Testing Module Testing Script screen opened successfully.'
+      }
+    }
+  },
+  'inventory-goods-receipt': {
+    title: 'Goods Receipt',
+    screenshotsDir: 'test-results/screenshots/inventory_goods-receipt',
+    steps: {
+      '00_INVENTORY_GOODS_RECEIPT_OPENED.png': {
+        title: 'Goods Receipt opened',
+        description: 'The Inventory Goods Receipt screen opened successfully.'
+      },
+       '01_INVENTORY_GOODS_RECEIPT_ITEM_ADDED.png': {
+        title: 'Goods Receipt Item Added',
+        description: 'The Inventory Goods Receipt screen Item Added successfully.'
+      }
+    }
+  },
   'utilities-find-document': {
     title: 'Find Document',
     screenshotsDir: 'test-results/screenshots/find_document',

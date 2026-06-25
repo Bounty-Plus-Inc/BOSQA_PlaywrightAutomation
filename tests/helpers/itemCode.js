@@ -11,8 +11,13 @@ function getSalesItemCode(value) {
   return resolveItemCode(value, { envKey: 'BPI_SALES_ITEMCODE' });
 }
 
+function getItemCode(value) {
+  return resolveItemCode(value, { envKey: 'BPI_ITEMCODE' });
+}
+
 module.exports = {
   getSalesItemCode,
-  resolveItemCode
+  resolveItemCode,
+  getItemCode
 };
 
