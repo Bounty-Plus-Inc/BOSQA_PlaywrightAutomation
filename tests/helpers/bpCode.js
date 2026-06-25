@@ -48,7 +48,7 @@ function getDeliveryBpCode(value) {
 
 async function fillBpCodeField(pageOrPageObject, value, options = {}) {
   const {
-    envKey = 'BPI_SALES_BPCODE',
+    envKey,
     selectors = BP_CODE_SELECTORS,
     timeout = 20000
   } = options;

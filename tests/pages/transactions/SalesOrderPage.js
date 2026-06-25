@@ -6,8 +6,6 @@ const { BasePage } = require('../base/BasePage');
 const { BusinessPartnerCFL } = require('../popups/BusinessPartnerCFL');
 // This is for selecting an item from the CFL popup.
 const { DEFAULT_ITEM_SELECTORS, ItemCFL } = require('../popups/ItemCFL');
-// This is for reading or filling business partner codes.
-const { getSalesBpCode } = require('../../helpers/bpCode');
 // This is for reading document numbers from the page.
 const { readCurrentDocNo } = require('../../helpers/docNoReader');
 
@@ -30,7 +28,11 @@ class SalesOrderPage extends BasePage {
       .toContain('Customer');
   }
 
-  async selectInitialCustomerFromLookup(preferredCode = getSalesBpCode(), options = {}) {
+  async selectInitialCustomerFromLookup(preferredCode, options = {}) {
+    if (!String(preferredCode || '').trim()) {
+      throw new Error('Sales Order customer code is required.');
+    }
+
     const popupPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
     const customerLookup = await this.findInAllFrames(
       'img#cfl_bpcode[onclick*="OpenCFLbusinesspartners"]'
@@ -55,6 +57,19 @@ class SalesOrderPage extends BasePage {
     );
     await docSeriesSelect.selectOption(value);
     await expect(docSeriesSelect).toHaveValue(value);
+  }
+
+  async selectDocSeriesByLabel(label = 'Primary') {
+    const docSeriesSelect = await this.findInAllFrames(
+      'select#df_docseries[name="df_docseries"], select#df_docseries',
+      20
+    );
+    await docSeriesSelect.selectOption({ label });
+    await expect(docSeriesSelect.locator('option:checked')).toHaveText(label, { timeout: 5000 });
+    return {
+      expectedValue: label,
+      actualValue: ((await docSeriesSelect.locator('option:checked').textContent()) || '').trim()
+    };
   }
 
   async selectBusinessPartner(preferredCode, options = {}) {
@@ -449,6 +464,16 @@ class SalesOrderPage extends BasePage {
       ...actionResult.dialogMessages,
       popupMessage
     ]);
+    const isPendingApproval = await this.isPendingForApproval().catch(() => false);
+    if (!openStatusResult && isPendingApproval && this.isProcessEndedSuccessfully(statusMsg)) {
+      return {
+        isOpen: false,
+        statusMsg,
+        isCreditLimitBlocked: false,
+        isProcessEndedSuccessfully: true
+      };
+    }
+
     if (this.isCreditLimitBlocked(statusMsg)) {
       return {
         isOpen: false,
@@ -533,12 +558,22 @@ class SalesOrderPage extends BasePage {
 
     statusMsg = await this.readAddOrUpdateMessage();
     const isCreditLimitBlocked = this.isCreditLimitBlocked(statusMsg);
+    const hasPendingApproval = await this.isPendingForApproval().catch(() => false);
+    if (!openStatusResult && hasPendingApproval && this.isProcessEndedSuccessfully(statusMsg)) {
+      return {
+        isOpen: false,
+        statusMsg,
+        isCreditLimitBlocked: false,
+        isProcessEndedSuccessfully: true
+      };
+    }
+
     return {
       isOpen: openStatusResult && !isCreditLimitBlocked,
       statusMsg: statusMsg || (!openStatusResult ? 'Document did not open after Add.' : ''),
       isCreditLimitBlocked:
         isCreditLimitBlocked ||
-        (!openStatusResult && actionButtonUsed === 'btnAdd'),
+        (!openStatusResult && actionButtonUsed === 'btnAdd' && !hasPendingApproval),
       isProcessEndedSuccessfully:
         !openStatusResult && !isCreditLimitBlocked && this.isProcessEndedSuccessfully(statusMsg)
     };
@@ -678,7 +713,6 @@ class SalesOrderPage extends BasePage {
     if (raiseDiagnostics) return raiseDiagnostics;
 
     const statusMsg = await this.readStatusMessage();
-    if (/operation\s+ended\s+successfully/i.test(statusMsg)) return '';
     return statusMsg;
   }
 
@@ -713,8 +747,7 @@ class SalesOrderPage extends BasePage {
       '#statusMsg',
       '[id*="statusMsg"]',
       '[id*="raiseerror"]',
-      '[class*="status"]',
-      'text=/credit limit/i'
+      '[class*="status"]'
     ];
 
     for (const selector of selectors) {
@@ -762,7 +795,7 @@ class SalesOrderPage extends BasePage {
             .split(/\n+/)
             .map((line) => line.trim())
             .filter((line) =>
-              /insufficient\s+credit\s+limit\s+balance|credit limit|raiseerror|invalid action|for checking/i.test(line)
+              /insufficient\s+credit\s+limit\s+balance|invalid action.*credit\s+limit|credit\s+limit.*invalid action|for checking.*credit\s+limit|credit\s+limit.*for checking|raiseerror/i.test(line)
             )
             .join(' | ');
 
@@ -786,11 +819,48 @@ class SalesOrderPage extends BasePage {
     return '';
   }
 
-  async readDocumentMemory() {
+  async readDocumentMemory(options = {}) {
+    const bpCodeInput = await this.findInAllFrames(
+      'input#df_bpcode[name="df_bpcode"], input#df_bpcode, input[name="df_bpcode"]',
+      5
+    ).catch(() => null);
+    const bpCode = bpCodeInput
+      ? await bpCodeInput.inputValue().catch(() => '')
+      : options.fallbackBpCode || '';
+    const docNo = await readCurrentDocNo(this, {
+      required: false
+    }).catch(() => '') || options.fallbackDocNo || '';
+
     return {
-      bpCode: await (await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]')).inputValue(),
-      docNo: await readCurrentDocNo(this)
+      bpCode,
+      docNo
     };
+  }
+
+  async readPageHeaderText() {
+    const selectors = [
+      'td.labelPageHeader',
+      '.labelPageHeader',
+      'xpath=//td[contains(@class,"labelPageHeader")]'
+    ];
+
+    for (const selector of selectors) {
+      const header = await this.findInAllFrames(selector, 3).catch(() => null);
+      if (!header) continue;
+
+      const text = ((await header.textContent().catch(() => '')) || '').replace(/\s+/g, ' ').trim();
+      if (text) return text;
+    }
+
+    return '';
+  }
+
+  async isPendingForApproval() {
+    return expect
+      .poll(async () => this.readPageHeaderText().catch(() => ''), { timeout: 3000 })
+      .toMatch(/pending\s+for\s+approval/i)
+      .then(() => true)
+      .catch(() => false);
   }
 
   isCreditLimitBlocked(statusMsg) {
@@ -810,7 +880,7 @@ class SalesOrderPage extends BasePage {
   }
 
   isProcessEndedSuccessfully(statusMsg) {
-    return /process\s+ended\s+successfully/i.test(statusMsg || '');
+    return /(process|operation)\s+ended\s+successfully/i.test(statusMsg || '');
   }
 }
 

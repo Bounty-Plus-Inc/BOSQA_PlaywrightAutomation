@@ -349,6 +349,7 @@ export default function App() {
     } catch (error) {
       showToast(error.message);
       setRunStatus(`${runLabel} failed.`);
+      await openResults(selectedTest, { preserveActiveTest: Boolean(selectedTest.utilityLabel) }).catch(() => {});
     } finally {
       setIsRunInProgress(false);
     }

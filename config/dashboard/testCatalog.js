@@ -127,6 +127,7 @@ export function getTestCatalog() {
       dataInputs: result?.dataInputs || [],
       cards: testCards[resultId] || [],
       actions: result?.actions || [],
+      itemCountEnvKey: result?.itemCountEnvKey || '',
       documentRunModes: result?.documentRunModes || [],
       documentNumberInput: Boolean(result?.documentNumberInput),
       utilities: []

@@ -213,13 +213,20 @@ export function createPlaywrightRunnerApi() {
           return;
         }
 
+        const itemCountEnv = {
+          BPI_TEST_ITEM_COUNT: String(itemCount)
+        };
+        if (selectedTest.itemCountEnvKey) {
+          itemCountEnv[selectedTest.itemCountEnvKey] = String(itemCount);
+        }
+
         const modeArgs = mode === 'ui' ? ['--ui'] : mode === 'headed' ? ['--headed'] : [];
         const child = spawn('npx', ['playwright', 'test', spec, ...modeArgs], {
           cwd: process.cwd(),
           env: {
             ...process.env,
             ...inputEnv,
-            BPI_SALES_ITEM_COUNT: String(itemCount),
+            ...itemCountEnv,
             BPI_TEST_ACTION_ID: actionId,
             BPI_TEST_ACTION_LABEL: selectedAction?.label || '',
             BPI_FIND_DOCUMENT_NO: documentNumber,

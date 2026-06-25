@@ -13,11 +13,15 @@ const {
 // This is for opening the target BPI module.
 const { SalesOrderMenuPage } = require('../pages/base/moduleNavigation/SalesOrderMenuPage');
 // This is for opening the target BPI module.
+const { DeliveryOrderMenuPage } = require('../pages/base/moduleNavigation/DeliveryOrderMenuPage');
+// This is for opening the target BPI module.
 const {
   TransactionApprovalMenuPage
 } = require('../pages/base/moduleNavigation/TransactionApprovalMenuPage');
 // This is for transaction screen actions and checks.
 const { SalesOrderPage } = require('../pages/transactions/SalesOrderPage');
+// This is for Delivery Order transaction actions.
+const { DeliveryOrderPage } = require('../pages/transactions/DeliveryOrderPage');
 // This is for approval screen actions and checks.
 const { CreditLimitPage } = require('../pages/approvals/CreditLimitPage');
 // This is for approval screen actions and checks.
@@ -52,10 +56,17 @@ test('Sales Order', async ({ page }) => {
   const creditLimitCheckingMenu = new CreditLimitCheckingMenuPage(page);
   const creditLimitApprovalMenu = new CreditLimitApprovalMenuPage(page);
   const transactionApprovalMenu = new TransactionApprovalMenuPage(page);
+  const deliveryOrderMenu = new DeliveryOrderMenuPage(page);
   const salesOrder = new SalesOrderPage(page);
   const creditLimit = new CreditLimitPage(page);
   const transactionApproval = new TransactionApprovalPage(page);
+  const deliveryOrder = new DeliveryOrderPage(page);
   startRunSummary(testId, 'Sales Order');
+  const resolveDeliverySourceDocNo = (memory) =>
+    process.env.BPI_DELIVERY_SALES_ORDER_DOCNO ||
+    process.env.BPI_DELIVERY_COPY_FROM_DOCNO ||
+    memory.docNo ||
+    '';
 
   const runCreditLimitChecking = async (memory) => {
     await test.step('CREDIT LIMIT STANDARD', async () => {
@@ -102,6 +113,72 @@ test('Sales Order', async ({ page }) => {
 
       recordModuleDocNo('Transaction Approval', memory.docNo, 'Approved', testId);
       await takeStepScreenshot(page, testName, '10_TRANSACTION_APPROVAL_DONE');
+    });
+  };
+
+  const runDeliveryOrderCopyFrom = async (memory) => {
+    await test.step('DELIVERY ORDER COPY FROM SALES ORDER', async () => {
+      const sourceDocNo = resolveDeliverySourceDocNo(memory);
+
+      await deliveryOrderMenu.open();
+      await deliveryOrder.expectLoaded();
+      recordModuleDocNo('Delivery Order', sourceDocNo, 'Opened', testId);
+      await takeStepScreenshot(page, testName, '12_DELIVERY_ORDER_OPENED');
+
+      const copyResult = await deliveryOrder.copyFromSalesOrder({
+        bpCode: memory.bpCode,
+        salesOrderDocNo: sourceDocNo,
+        hooks: {
+          beforeSelectBp: async (bpCFLPage) => {
+            await takeStepScreenshot(bpCFLPage, testName, '13_DELIVERY_BP_CFL_POPUP');
+          },
+          afterBpSelected: async (selectedBpCode) => {
+            recordModuleDocNo(
+              'Delivery Order BP Code',
+              memory.bpCode,
+              selectedBpCode,
+              testId,
+              selectedBpCode === memory.bpCode
+                ? 'Validated successfully against the expected value.'
+                : 'Actual value differs from the expected value.'
+            );
+            await takeStepScreenshot(page, testName, '14_DELIVERY_BP_SELECTED');
+          },
+          afterCopyFromOpened: async (copyFrom) => {
+            await takeStepScreenshot(copyFrom.page, testName, '15_DELIVERY_COPY_FROM_POPUP');
+          },
+          afterHeaderSelected: async (selectedHeader, copyFrom) => {
+            const actualDocNo = selectedHeader.docNo || sourceDocNo;
+            recordModuleDocNo(
+              'Delivery Order Copy From Sales Order',
+              sourceDocNo,
+              actualDocNo,
+              testId,
+              actualDocNo === sourceDocNo
+                ? 'Validated successfully against the expected value.'
+                : 'Actual value differs from the expected value.'
+            );
+            await takeStepScreenshot(copyFrom.page, testName, '16_DELIVERY_SOURCE_SELECTED');
+          },
+          afterItemsLoaded: async (copyFrom) => {
+            await takeStepScreenshot(copyFrom.page, testName, '17_DELIVERY_ITEMS_LOADED');
+          },
+          afterItemSelected: async (copyFrom) => {
+            await takeStepScreenshot(copyFrom.page, testName, '18_DELIVERY_ITEMS_SELECTED');
+          },
+          afterFinished: async () => {
+            await takeStepScreenshot(page, testName, '19_DELIVERY_ITEMS_COPIED');
+          }
+        }
+      });
+
+      recordModuleDocNo(
+        'Delivery Order Copy From',
+        sourceDocNo,
+        copyResult.sourceDocNo,
+        testId,
+        'Sales Order source document was copied into Delivery Order.'
+      );
     });
   };
 
@@ -159,6 +236,8 @@ test('Sales Order', async ({ page }) => {
 
     await takeStepScreenshot(page, testName, 'ZZ_Credit_Limit_Blocking_Message');
     await runCreditLimitChecking(memory);
+    await runTransactionApproval(memory);
+    await runDeliveryOrderCopyFrom(memory);
     finishRunSummary('success', testId);
     return;
   }
@@ -171,6 +250,7 @@ test('Sales Order', async ({ page }) => {
         `[SALES ORDER] Process ended successfully; proceeding to Transaction Approval -> bpCode: ${memory.bpCode}, docNo: ${memory.docNo}`
       );
       await runTransactionApproval(memory);
+      await runDeliveryOrderCopyFrom(memory);
       finishRunSummary('success', testId);
       return;
     }

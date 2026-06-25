@@ -1,18 +1,28 @@
 # BOS/BPI Automation Framework Full Tutorial
 
-## 1. Main Idea
+## 1. How The Framework Works
 
 ```text
-Framework creates the test structure.
-Page objects control the ERP screens.
-Cards create dashboard inputs and buttons.
-envKey sends dashboard input to Playwright.
+Framework scaffold creates the base files.
+Navigation page opens the ERP module.
+Transaction page contains field and button actions.
+Spec file controls the test flow.
+Test card creates dashboard fields and buttons.
+envKey sends dashboard input into Playwright.
+Utilities handle shared flows like Find Document.
 Document readers capture loaded document data for replicate.
 ```
 
-## 2. Create A Test Script
+Keep this rule:
 
-In the dashboard:
+```text
+Generic helpers must not assume Sales Order.
+Module-specific values must live in module configs, specs, or page objects.
+```
+
+## 2. Create A New Module
+
+Open the dashboard:
 
 ```text
 Framework -> Scaffold Generator
@@ -25,7 +35,7 @@ Module name: Your Module
 Test case name: Your Script
 ```
 
-Framework creates:
+The framework creates:
 
 ```text
 tests/your-module/your-script.spec.js
@@ -34,42 +44,54 @@ tests/pages/transactions/YourScriptPage.js
 docs/generated/your-module-your-script-scaffold.txt
 ```
 
-Framework also updates:
+The framework updates:
 
 ```text
 config/dashboard/testModules.js
 config/dashboard/testResults.js
 ```
 
-Test case ID format:
+The test case ID becomes:
 
 ```text
 your-module-your-script
 ```
 
-## 3. What Each File Does
+Format:
 
 ```text
-spec.js
-Main test flow.
-
-ModuleMenuPage.js
-Opens the ERP module.
-
-YourScriptPage.js
-Screen actions and validations.
-
-testModules.js
-Dashboard module label, icon, and order.
-
-testResults.js
-Result title, screenshots, Find Document utility setup.
-
-testCards
-Dashboard fields and buttons.
+module-name-test-case-name
 ```
 
-## 4. Add Navigation
+## 3. File Responsibilities
+
+```text
+tests/your-module/your-script.spec.js
+Main Playwright test flow.
+
+tests/pages/base/moduleNavigation/YourModuleMenuPage.js
+ERP menu navigation.
+
+tests/pages/transactions/YourScriptPage.js
+Field filling, buttons, validation, module-specific methods.
+
+config/dashboard/testModules.js
+Dashboard sidebar module label, icon, and order.
+
+config/dashboard/testResults.js
+Result title, screenshots, item count env, utility metadata.
+
+config/dashboard/testCards
+Dashboard card fields and run/view buttons.
+
+tests/pages/popups
+Reusable CFL popup helpers.
+
+tests/helpers/documentReaders
+Reusable document capture helpers.
+```
+
+## 4. Step 1: Fix Navigation
 
 Open:
 
@@ -77,7 +99,7 @@ Open:
 tests/pages/base/moduleNavigation/YourModuleMenuPage.js
 ```
 
-Replace the scaffold TODO with real ERP menu clicks.
+Replace the scaffold TODO.
 
 Example shape:
 
@@ -86,12 +108,19 @@ async open() {
   const mainTab = await this.findInAllFrames('xpath=...');
   await mainTab.click();
 
-  const menuItem = await this.findInAllFrames('xpath=...');
-  await menuItem.click();
+  const moduleMenu = await this.findInAllFrames('xpath=...');
+  await moduleMenu.click();
 }
 ```
 
-## 5. Add Page Object Actions
+Rule:
+
+```text
+Navigation page only opens the module.
+Do not place transaction field logic here.
+```
+
+## 5. Step 2: Add Page Object Actions
 
 Open:
 
@@ -99,25 +128,35 @@ Open:
 tests/pages/transactions/YourScriptPage.js
 ```
 
-Add reusable actions here.
+Add methods for fields and buttons.
 
 Example:
 
 ```js
-async fillCustomerCode(customerCode) {
-  const input = await this.findInAllFrames('#df_bpcode');
-  await input.fill(customerCode);
+async fillRemarks(remarks) {
+  const remarksInput = await this.findInAllFrames('#df_remarks');
+  await remarksInput.fill(remarks);
+}
+```
+
+Example with validation:
+
+```js
+async fillReferenceNo(referenceNo) {
+  const input = await this.findInAllFrames('#df_bprefno');
+  await input.fill(referenceNo);
+  await expect(input).toHaveValue(referenceNo);
 }
 ```
 
 Rule:
 
 ```text
-Selectors should mostly live in page objects.
-The spec should call clean methods.
+Spec calls methods.
+Page object knows selectors.
 ```
 
-## 6. Add Test Flow
+## 6. Step 3: Build The Spec Flow
 
 Open:
 
@@ -125,22 +164,48 @@ Open:
 tests/your-module/your-script.spec.js
 ```
 
-The flow usually looks like:
+Typical flow:
 
 ```text
+set testId
+startRunSummary(testId, title)
 login
 open module
-wait for page
-fill fields
-click actions
-validate result
-record summary
-take screenshots
+expect loaded
+read env values
+call page object methods
+save/add/update
+recordModuleDocNo(..., testId)
+finishRunSummary(status, testId)
 ```
 
-## 7. Dashboard Card
+Example:
 
-Create card only if the dashboard user needs inputs/buttons.
+```js
+const testId = 'your-module-your-script';
+const remarks = process.env.BPI_YOUR_REMARKS || '';
+
+startRunSummary(testId, 'Your Script');
+
+await loginPage.loginAs();
+await moduleNavigation.open();
+await transactionPage.expectLoaded();
+await transactionPage.fillRemarks(remarks);
+
+recordModuleDocNo('Your Module', '', 'Completed', testId);
+finishRunSummary('success', testId);
+```
+
+Important:
+
+```text
+Always pass testId.
+Shared summary helpers do not default to Sales Order.
+```
+
+## 7. Step 4: Add A Dashboard Card
+
+Create a card only when dashboard users need inputs or buttons.
 
 Create:
 
@@ -159,11 +224,11 @@ export const yourScriptCards = [
     testScript: 'tests/your-module/your-script.spec.js',
     fields: [
       {
-        id: 'customerCode',
+        id: 'remarks',
         type: 'text',
-        label: 'Customer Code',
-        envKey: 'BPI_TEST_CUSTOMER_CODE',
-        required: true
+        label: 'Remarks',
+        envKey: 'BPI_YOUR_REMARKS',
+        required: false
       }
     ],
     buttons: [
@@ -186,7 +251,7 @@ export const yourScriptCards = [
 ];
 ```
 
-## 8. Register Card
+## 8. Step 5: Register The Card
 
 Open:
 
@@ -209,35 +274,64 @@ Add mapping:
 Rule:
 
 ```text
-Mapping key must match the test case ID.
+The mapping key must match the test case ID.
 ```
 
-## 9. Use Dashboard Inputs
+## 9. How Card Fields Reach Playwright
 
 Card field:
 
 ```js
 {
-  id: 'customerCode',
-  envKey: 'BPI_TEST_CUSTOMER_CODE'
+  id: 'remarks',
+  type: 'text',
+  label: 'Remarks',
+  envKey: 'BPI_YOUR_REMARKS'
 }
 ```
 
-Test script:
-
-```js
-const customerCode = process.env.BPI_TEST_CUSTOMER_CODE || '';
-```
-
-Flow:
+Dashboard user types:
 
 ```text
-Dashboard input
+Created by functional user
+```
+
+Runner sends:
+
+```text
+process.env.BPI_YOUR_REMARKS = Created by functional user
+```
+
+Spec reads:
+
+```js
+const remarks = process.env.BPI_YOUR_REMARKS || '';
+```
+
+Spec passes to page object:
+
+```js
+await transactionPage.fillRemarks(remarks);
+```
+
+Page object fills ERP:
+
+```js
+async fillRemarks(remarks) {
+  const input = await this.findInAllFrames('#df_remarks');
+  await input.fill(remarks);
+}
+```
+
+Full path:
+
+```text
+Dashboard field
 envKey
-Playwright process.env
-spec.js
-page object
-ERP field
+process.env
+spec variable
+page object method
+ERP selector
 ```
 
 ## 10. Field Types
@@ -261,7 +355,7 @@ Dropdown:
   id: 'mode',
   type: 'dropdown',
   label: 'Mode',
-  envKey: 'BPI_TEST_MODE',
+  envKey: 'BPI_YOUR_MODE',
   options: [
     { label: 'Display', value: 'display' },
     { label: 'Replicate', value: 'replicate' }
@@ -269,42 +363,198 @@ Dropdown:
 }
 ```
 
-## 11. Use CFL Helpers
+Read dropdown:
 
-CFL popup helpers live in:
+```js
+const mode = process.env.BPI_YOUR_MODE || '';
+```
+
+## 11. Module-Specific Env Names
+
+Use env names that belong to the module.
+
+Good:
+
+```text
+BPI_SALES_BPCODE
+BPI_DELIVERY_BPCODE
+BPI_PURCHASING_VENDOR_CODE
+BPI_INVENTORY_ITEM_CODE
+```
+
+Avoid generic helpers defaulting to one module:
+
+```text
+Generic helper should not default to BPI_SALES_BPCODE.
+```
+
+Current standard:
+
+```text
+Generic helper accepts envKey.
+Module spec or page object passes envKey.
+```
+
+Example:
+
+```js
+await fillBpCodeField(this, bpCode, {
+  envKey: 'BPI_DELIVERY_BPCODE'
+});
+```
+
+## 12. Item Count
+
+The runner always sends:
+
+```text
+BPI_TEST_ITEM_COUNT
+```
+
+If a module needs a module-specific item count env, set it in:
+
+```text
+config/dashboard/testResults.js
+```
+
+Example:
+
+```js
+itemCountEnvKey: 'BPI_SALES_ITEM_COUNT'
+```
+
+Then the runner sends both:
+
+```text
+BPI_TEST_ITEM_COUNT
+BPI_SALES_ITEM_COUNT
+```
+
+Future module example:
+
+```js
+itemCountEnvKey: 'BPI_PURCHASING_LINE_COUNT'
+```
+
+## 13. Using Popup/CFL Helpers
+
+Popup helpers live in:
 
 ```text
 tests/pages/popups
 ```
 
-Example:
+Examples:
 
 ```text
+BusinessPartnerCFL.js
 ItemCFL.js
 WarehouseCFL.js
-BusinessPartnerCFL.js
 ProfitCenterCFL.js
 ```
 
-For a new transaction, call CFL from the transaction page object.
+Use popup helpers from the transaction page object.
 
-Example:
+Do not put popup steps directly in the spec unless it is temporary debugging.
+
+Good flow:
+
+```text
+spec.js
+calls transactionPage.selectItemCode(itemCode)
+
+transaction page
+clicks CFL button
+opens popup helper
+validates returned ERP field
+
+popup helper
+searches and selects popup row
+```
+
+## 14. Example: Using ItemCFL In A Module
+
+In transaction page:
 
 ```js
-await this.selectItemCodeWithRetry(itemCode);
+const { expect } = require('@playwright/test');
+const { ItemCFL, DEFAULT_ITEM_SELECTORS } = require('../popups/ItemCFL');
+```
+
+Method shape:
+
+```js
+async selectItemCode(itemCode) {
+  const itemCflButton = await this.findInAllFrames(DEFAULT_ITEM_SELECTORS.trigger);
+  const popupPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
+
+  await itemCflButton.click();
+
+  const popupPage = await popupPromise;
+  const itemCFL = new ItemCFL(popupPage);
+  await itemCFL.selectItemByLabel(itemCode);
+
+  const itemInput = await this.findInAllFrames('#df_itemcodeT1');
+  await expect(itemInput).toHaveValue(itemCode);
+}
+```
+
+Spec usage:
+
+```js
+await transactionPage.selectItemCode(itemCode);
 ```
 
 Rule:
 
 ```text
-CFL helper handles popup.
-Transaction page handles field button and validation.
+Popup helper handles popup.
+Transaction page handles module field button and validation.
 Spec only calls the transaction method.
 ```
 
-## 12. Display And Replicate
+## 15. Example: Using Business Partner Field Helper
 
-Display / Replicate is the Find Document utility.
+Generic helper:
+
+```text
+tests/helpers/bpCode.js
+```
+
+Use it with explicit envKey:
+
+```js
+await fillBpCodeField(this, bpCode, {
+  envKey: 'BPI_YOUR_MODULE_BPCODE'
+});
+```
+
+If your module needs a CFL instead of direct fill, create a method in the transaction page:
+
+```js
+async selectBusinessPartner(bpCode) {
+  const cflButton = await this.findInAllFrames('#cfl_bpcode');
+  const popupPromise = this.page.context().waitForEvent('page');
+  await cflButton.click();
+
+  const popupPage = await popupPromise;
+  const bpCFL = new BusinessPartnerCFL(popupPage);
+  const selectedCode = await bpCFL.selectCustomerCode(bpCode);
+
+  const input = await this.findInAllFrames('#df_bpcode');
+  await expect(input).toHaveValue(selectedCode);
+}
+```
+
+## 16. Utilities
+
+Utilities are shared flows that can appear beside a test.
+
+Current utility:
+
+```text
+Find Document
+```
 
 Main files:
 
@@ -314,40 +564,53 @@ tests/utilities/find-document.spec.js
 config/dashboard/testResults.js
 ```
 
-Add a module action in:
+Display mode:
+
+```text
+Open module
+Find document
+Load document
+Stop
+```
+
+Replicate mode:
+
+```text
+Open module
+Find document
+Load document
+Capture data
+Recreate transaction
+```
+
+## 17. Add Find Document To A Module
+
+Open:
 
 ```text
 tests/utilities/findDocumentActions.js
 ```
 
-Example:
+Add:
 
 ```js
 {
-  id: 'sales-order',
-  label: 'Sales Order',
-  testTitle: 'Sales Order Document',
-  moduleId: 'sales',
-  testResultId: 'sales-sales-order-transaction',
-  moduleName: 'Sales Order',
-  navigationModulePath: '../pages/base/moduleNavigation/SalesOrderMenuPage',
-  navigationExportName: 'SalesOrderMenuPage',
-  openedScreenshot: '00_FIND_DOCUMENT_SALES_ORDER_OPENED',
-  loadedScreenshot: '01_FIND_DOCUMENT_SALES_ORDER_LOADED'
+  id: 'your-module',
+  label: 'Your Module',
+  testTitle: 'Your Module Document',
+  moduleId: 'your-module',
+  testResultId: 'your-module-your-script',
+  moduleName: 'Your Module',
+  navigationModulePath: '../pages/base/moduleNavigation/YourModuleMenuPage',
+  navigationExportName: 'YourModuleMenuPage',
+  openedScreenshot: '00_FIND_DOCUMENT_YOUR_MODULE_OPENED',
+  loadedScreenshot: '01_FIND_DOCUMENT_YOUR_MODULE_LOADED'
 }
 ```
 
-Modes:
+This attaches Find Document to the target test card.
 
-```text
-Display
-Open module -> Find document -> Load document -> Stop
-
-Replicate
-Open module -> Find document -> Load document -> Capture data -> Recreate transaction
-```
-
-## 13. Reusable Document Readers
+## 18. Reusable Document Capture
 
 Reader files:
 
@@ -360,26 +623,32 @@ tests/helpers/documentReaders/documentDataReader.js
 Module configs:
 
 ```text
-tests/helpers/documentReaders/config/SalesOrderDocumentData.js
+tests/helpers/documentReaders/config
+```
+
+Current config:
+
+```text
+SalesOrderDocumentData.js
 ```
 
 Meaning:
 
 ```text
 headerReader.js
-Reads header selectors.
+Reads configured header selectors.
 
 lineItemReader.js
-Reads table row fields.
+Reads configured line item table.
 
 documentDataReader.js
 Combines headers and line items.
 
 SalesOrderDocumentData.js
-Sales Order-specific header and line item config.
+Defines what Sales Order wants to capture.
 ```
 
-## 14. Add A New Document Data Config
+## 19. Create Document Capture For A New Module
 
 Create:
 
@@ -387,7 +656,7 @@ Create:
 tests/helpers/documentReaders/config/YourModuleDocumentData.js
 ```
 
-Shape:
+Example:
 
 ```js
 const YourModuleDocumentData = {
@@ -395,62 +664,169 @@ const YourModuleDocumentData = {
     {
       key: 'bpCode',
       selectors: ['#df_bpcode']
+    },
+    {
+      key: 'referenceNo',
+      selectors: ['#df_bprefno']
     }
   ],
   lineItems: {
-    tableSelectors: ['div.divTableBox table.tableBox#T1'],
+    tableSelectors: [
+      'div.divTableBox table.tableBox#T1',
+      'div.divTableBox table.tableBox[id]'
+    ],
     fieldAliases: {
       itemcode: 'itemCode',
-      itemdesc: 'itemDesc'
+      itemdesc: 'itemDesc',
+      whscode: 'warehouseCode'
     }
   }
 };
+
+module.exports = {
+  YourModuleDocumentData
+};
 ```
 
-Then use:
+Use it:
 
 ```js
+const { readDocumentData } = require('../helpers/documentReaders/documentDataReader');
+const { YourModuleDocumentData } = require('../helpers/documentReaders/config/YourModuleDocumentData');
+
 const capturedData = await readDocumentData(page, YourModuleDocumentData);
 ```
 
-## 15. Current Sales Order Capture
+## 20. What fieldAliases Does
 
-Sales Order config is here:
+ERP row field:
 
 ```text
-tests/helpers/documentReaders/config/SalesOrderDocumentData.js
+itemcode
 ```
 
-It captures:
+Alias:
 
-```text
-bpCode
-bpRefNo
-shipToCode
-shipToAddress
-shipType
-salesOrg
-distributionChannel
-division
-businessCenter
-lineItems
+```js
+fieldAliases: {
+  itemcode: 'itemCode'
+}
 ```
 
-## 16. Short Rules
+Captured JSON:
+
+```js
+{
+  itemCode: '13800292'
+}
+```
+
+Use aliases when:
 
 ```text
-Need a new test?
-Use Framework scaffold.
+ERP field name is ugly.
+You want a clean JSON name.
+Replicate code expects a business-friendly name.
+```
 
-Need dashboard input?
-Create testCards config.
+No alias needed when:
 
-Need popup selection?
-Use or create CFL helper.
+```text
+The automatic camelCase name is already okay.
+```
 
-Need Display / Replicate?
-Add Find Document action.
+## 21. Recreate Transaction
 
-Need captured document data?
-Create DocumentData config.
+Recreate files live in:
+
+```text
+tests/pages/ReCreateTransaction
+```
+
+Example:
+
+```text
+SalesOrder.js
+```
+
+These files take captured data and create a new transaction.
+
+Flow:
+
+```text
+Find Document Replicate
+capture document data
+open new transaction
+wire headers
+wire line items
+save as draft
+add/update
+approval or credit limit flow if needed
+```
+
+## 22. New Module Maintenance Checklist
+
+When creating a new module:
+
+```text
+1. Create scaffold from Framework.
+2. Fill navigation selectors.
+3. Add page object methods.
+4. Add spec flow.
+5. Add card only if dashboard inputs/buttons are needed.
+6. Register card in testCards/index.js.
+7. Use module-specific env names.
+8. Pass testId to all runSummary calls.
+9. Use popup helpers from transaction page objects.
+10. Add Find Document action if needed.
+11. Add DocumentData config if replicate needs capture.
+12. Add ReCreateTransaction file if replicate needs recreation.
+13. Run node --check.
+14. Run npm test -- --list.
+15. Run the new spec headed first.
+```
+
+## 23. Common Commands
+
+Syntax check:
+
+```text
+node --check tests/your-module/your-script.spec.js
+```
+
+List tests:
+
+```text
+npm test -- --list
+```
+
+Run one test headed:
+
+```text
+npx playwright test tests/your-module/your-script.spec.js --headed
+```
+
+Run dashboard build:
+
+```text
+npm run build
+```
+
+## 24. Clean Rules
+
+```text
+Do not put module-specific defaults in generic helpers.
+Do not put selectors directly in specs unless temporary.
+Do not make documentLineItems import Sales Order config.
+Do not reuse Sales env names for other modules.
+Do not add cards unless dashboard users need inputs.
+```
+
+Preferred pattern:
+
+```text
+Module-specific data -> module config/spec/page object
+Reusable behavior -> helpers
+Dashboard UI -> testCards
+Shared utilities -> tests/utilities
 ```
