@@ -341,12 +341,30 @@ export const testResults = {
     steps: {
       '00_INVENTORY_GOODS_RECEIPT_OPENED.png': {
         title: 'Goods Receipt opened',
-        description: 'The Inventory Goods Receipt screen opened successfully.'
+        description: 'The Goods Receipt transaction screen opened successfully.'
       },
        '01_INVENTORY_GOODS_RECEIPT_ITEM_ADDED.png': {
         title: 'Goods Receipt Item Added',
-        description: 'The Inventory Goods Receipt screen Item Added successfully.'
+        description:
+      'The item was selected from the CFL and loaded into the Goods Receipt document.'
+      },
+       '05_INVENTORY_GOODS_RECEIPT_ITEM_UPDATED.png': {
+        title: 'Goods Receipt Item Updated',
+        description: 'The warehouse, quantities, profit center and unit price were updated successfully.'
+      },
+       '06_INVENTORY_GOODS_RECEIPT_DOCUMENT_ADDED.png': {
+        title: 'Goods Receipt Document Added',
+        description:   'The Goods Receipt document was successfully added.'
+      },
+       '07_INVENTORY_GOODS_RECEIPT_JOURNAL_ENTRY.png': {
+        title: 'Goods Receipt Document Added',
+        description: 'The generated Journal Entry was opened and its document number, debit, credit and total amount were verified.'
+      },
+       '08_INVENTORY_BATCH_POPUP_COMPLETED.png': {
+        title: 'Goods Receipt Batch Popup Completed',
+         description: 'The batch popup was opened and the batch number was selected successfully.'
       }
+       
     }
   },
   'utilities-find-document': {
