@@ -268,7 +268,6 @@ export const testResults = {
         description:
           'The selected Sales Order items were copied back into the Delivery Order form.'
       }
-
     }
   },
   'sales-delivery-order': {
@@ -349,6 +348,16 @@ export const testResults = {
       }
     }
   },
+  'purchasing-purchase-request': {
+    title: 'Purchase Request',
+    screenshotsDir: 'test-results/screenshots/purchasing_purchase-request',
+    steps: {
+      '00_PURCHASING_PURCHASE_REQUEST_OPENED.png': {
+        title: 'Purchase Request opened',
+        description: 'The Purchasing Purchase Request screen opened successfully.'
+      }
+    }
+  },
   'utilities-find-document': {
     title: 'Find Document',
     screenshotsDir: 'test-results/screenshots/find_document',
@@ -372,6 +381,4 @@ export const testResults = {
     ],
     steps: getFindDocumentSteps()
   }
-
-  
 };
