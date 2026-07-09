@@ -34,12 +34,12 @@ test('Approval', async ({ page }) => {
   recordModuleDocNo('Transaction Approval', '', 'Opened', testId);
   await takeStepScreenshot(page, testName, '00_APPROVAL_PAGE_OPENED');
 
-  await approval.approveDocument(async () => {
+  const approvalRemark = await approval.approveDocument(async () => {
     await takeStepScreenshot(page, testName, '01_APPROVAL_ROW_SELECTED');
   });
 
-  recordModuleDocNo('Transaction Approval', '', 'Success for Approval Stage', testId);
+  recordModuleDocNo('Transaction Approval', '', approvalRemark, testId);
   await takeStepScreenshot(page, testName, '02_APPROVAL_SUCCESS_OPEN');
 
-  finishRunSummary('Success for Approval Stage', testId);
+  finishRunSummary(approvalRemark, testId);
 });

@@ -143,11 +143,14 @@ async function replicateSalesOrderTransaction({ capturedData, page, testId, test
     recordModuleDocNo('Transaction Approval', memory.docNo, 'Opened', testId);
     await takeStepScreenshot(page, testName, '08_RECREATE_TRANSACTION_APPROVAL_OPENED');
 
-    await transactionApproval.approveDocument(async () => {
-      await takeStepScreenshot(page, testName, '09_RECREATE_TRANSACTION_APPROVAL_SELECTED');
-    });
+    const approvalRemark = await transactionApproval.approveDocument(
+      async () => {
+        await takeStepScreenshot(page, testName, '09_RECREATE_TRANSACTION_APPROVAL_SELECTED');
+      },
+      { docNo: memory.docNo }
+    );
 
-    recordModuleDocNo('Transaction Approval', memory.docNo, 'Approved', testId);
+    recordModuleDocNo('Transaction Approval', memory.docNo, approvalRemark, testId);
     await takeStepScreenshot(page, testName, '10_RECREATE_TRANSACTION_APPROVAL_DONE');
   };
 
