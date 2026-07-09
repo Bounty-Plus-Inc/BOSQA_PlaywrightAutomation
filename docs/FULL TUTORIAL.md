@@ -2,6 +2,8 @@
 
 ## 1. How The Framework Works
 
+![Framework overview](./screenshots/full-tutorial/01-framework-overview.png)
+
 ```text
 Framework scaffold creates the base files.
 Navigation page opens the ERP module.
@@ -21,6 +23,8 @@ Module-specific values must live in module configs, specs, or page objects.
 ```
 
 ## 2. Create A New Module
+
+![Create a new module](./screenshots/full-tutorial/02-create-new-module.png)
 
 Open the dashboard:
 
@@ -65,6 +69,8 @@ module-name-test-case-name
 
 ## 3. File Responsibilities
 
+![File responsibilities](./screenshots/full-tutorial/03-file-responsibilities.png)
+
 ```text
 tests/your-module/your-script.spec.js
 Main Playwright test flow.
@@ -92,6 +98,8 @@ Reusable document capture helpers.
 ```
 
 ## 4. Step 1: Fix Navigation
+
+![Fix navigation](./screenshots/full-tutorial/04-step-1-fix-navigation.png)
 
 Open:
 
@@ -121,6 +129,8 @@ Do not place transaction field logic here.
 ```
 
 ## 5. Step 2: Add Page Object Actions
+
+![Add page object actions](./screenshots/full-tutorial/05-step-2-add-page-object-actions.png)
 
 Open:
 
@@ -157,6 +167,8 @@ Page object knows selectors.
 ```
 
 ## 6. Step 3: Build The Spec Flow
+
+![Build the spec flow](./screenshots/full-tutorial/06-step-3-build-the-spec-flow.png)
 
 Open:
 
@@ -204,6 +216,8 @@ Shared summary helpers do not default to Sales Order.
 ```
 
 ## 7. Step 4: Add A Dashboard Card
+
+![Add a dashboard card](./screenshots/full-tutorial/07-step-4-add-a-dashboard-card.png)
 
 Create a card only when dashboard users need inputs or buttons.
 
@@ -253,6 +267,8 @@ export const yourScriptCards = [
 
 ## 8. Step 5: Register The Card
 
+![Register the card](./screenshots/full-tutorial/08-step-5-register-the-card.png)
+
 Open:
 
 ```text
@@ -278,6 +294,8 @@ The mapping key must match the test case ID.
 ```
 
 ## 9. How Card Fields Reach Playwright
+
+![How card fields reach Playwright](./screenshots/full-tutorial/09-how-card-fields-reach-playwright.png)
 
 Card field:
 
@@ -336,6 +354,8 @@ ERP selector
 
 ## 10. Field Types
 
+![Field types](./screenshots/full-tutorial/10-field-types.png)
+
 Text:
 
 ```js
@@ -371,6 +391,8 @@ const mode = process.env.BPI_YOUR_MODE || '';
 
 ## 11. Module-Specific Env Names
 
+![Module-specific env names](./screenshots/full-tutorial/11-module-specific-env-names.png)
+
 Use env names that belong to the module.
 
 Good:
@@ -405,6 +427,8 @@ await fillBpCodeField(this, bpCode, {
 
 ## 12. Item Count
 
+![Item count](./screenshots/full-tutorial/12-item-count.png)
+
 The runner always sends:
 
 ```text
@@ -437,6 +461,8 @@ itemCountEnvKey: 'BPI_PURCHASING_LINE_COUNT'
 ```
 
 ## 13. Using Popup/CFL Helpers
+
+![Using popup CFL helpers](./screenshots/full-tutorial/13-using-popup-cfl-helpers.png)
 
 Popup helpers live in:
 
@@ -473,6 +499,8 @@ searches and selects popup row
 ```
 
 ## 14. Example: Using ItemCFL In A Module
+
+![Using ItemCFL in a module](./screenshots/full-tutorial/14-using-itemcfl-in-a-module.png)
 
 In transaction page:
 
@@ -515,6 +543,8 @@ Spec only calls the transaction method.
 
 ## 15. Example: Using Business Partner Field Helper
 
+![Using Business Partner field helper](./screenshots/full-tutorial/15-using-business-partner-field-helper.png)
+
 Generic helper:
 
 ```text
@@ -547,6 +577,8 @@ async selectBusinessPartner(bpCode) {
 ```
 
 ## 16. Utilities
+
+![Utilities](./screenshots/full-tutorial/16-utilities.png)
 
 Utilities are shared flows that can appear beside a test.
 
@@ -585,6 +617,8 @@ Recreate transaction
 
 ## 17. Add Find Document To A Module
 
+![Add Find Document to a module](./screenshots/full-tutorial/17-add-find-document-to-a-module.png)
+
 Open:
 
 ```text
@@ -611,6 +645,8 @@ Add:
 This attaches Find Document to the target test card.
 
 ## 18. Reusable Document Capture
+
+![Reusable document capture](./screenshots/full-tutorial/18-reusable-document-capture.png)
 
 Reader files:
 
@@ -649,6 +685,8 @@ Defines what Sales Order wants to capture.
 ```
 
 ## 19. Create Document Capture For A New Module
+
+![Create document capture for a new module](./screenshots/full-tutorial/19-create-document-capture-for-a-new-module.png)
 
 Create:
 
@@ -699,6 +737,8 @@ const capturedData = await readDocumentData(page, YourModuleDocumentData);
 
 ## 20. What fieldAliases Does
 
+![What fieldAliases does](./screenshots/full-tutorial/20-what-fieldaliases-does.png)
+
 ERP row field:
 
 ```text
@@ -737,6 +777,8 @@ The automatic camelCase name is already okay.
 
 ## 21. Recreate Transaction
 
+![Recreate transaction](./screenshots/full-tutorial/21-recreate-transaction.png)
+
 Recreate files live in:
 
 ```text
@@ -766,6 +808,8 @@ approval or credit limit flow if needed
 
 ## 22. New Module Maintenance Checklist
 
+![New module maintenance checklist](./screenshots/full-tutorial/22-new-module-maintenance-checklist.png)
+
 When creating a new module:
 
 ```text
@@ -787,6 +831,8 @@ When creating a new module:
 ```
 
 ## 23. Common Commands
+
+![Common commands](./screenshots/full-tutorial/23-common-commands.png)
 
 Syntax check:
 
@@ -813,6 +859,8 @@ npm run build
 ```
 
 ## 24. Clean Rules
+
+![Clean rules](./screenshots/full-tutorial/24-clean-rules.png)
 
 ```text
 Do not put module-specific defaults in generic helpers.
