@@ -367,6 +367,42 @@ export const testResults = {
        
     }
   },
+  'inventory-goods-issue': {
+    title: 'Goods Issue',
+    screenshotsDir: 'test-results/screenshots/inventory_goods-issue',
+    steps: {
+      '00_INVENTORY_GOODS_ISSUE_OPENED.png': {
+        title: 'Goods Issue opened',
+        description: 'The Inventory Goods Issue screen opened successfully.'
+      },
+      '01_INVENTORY_GOODS_ISSUE_ITEM_ADDED.png': {
+        title: 'Goods Issue Item Added',
+        description:
+      'The item was selected from the CFL and loaded into the Goods Issue document.'
+      },
+      '07_INVENTORY_GOODS_ISSUE_JOURNAL_ENTRY.png': {
+        title: 'Goods Issue Document Added',
+        description: 'The generated Journal Entry was opened and its document number, debit, credit and total amount were verified.'
+      },
+      '08_INVENTORY_BATCH_POPUP_COMPLETED.png': {
+        title: 'Goods Issue Batch Popup Completed',
+         description: 'The batch popup was opened and the batch number was selected successfully.'
+      },
+      '02_WAREHOUSE_NOT_FOUND.png': {
+        title: 'Warehouse not found',
+        description: 'The selected warehouse was not found in the Item Availability list.'
+      },
+      '03_WAREHOUSE_INSUFFICIENT_STOCK.png': {
+        title: 'Warehouse Insufficient Stock',
+         description: 'The selected warehouse has insufficient stock for the requested quantity.'
+      },
+      '06_INVENTORY_GOODS_ISSUE_DOCUMENT_ADDED.png': {
+        title: 'Goods Issue Document Added',
+        description:   'The Goods Issue document was successfully added.'
+      },
+      
+    }
+  },
   'utilities-find-document': {
     title: 'Find Document',
     screenshotsDir: 'test-results/screenshots/find_document',
