@@ -268,7 +268,6 @@ export const testResults = {
         description:
           'The selected Sales Order items were copied back into the Delivery Order form.'
       }
-
     }
   },
   'sales-delivery-order': {
@@ -426,6 +425,4 @@ export const testResults = {
     ],
     steps: getFindDocumentSteps()
   }
-
-  
 };
