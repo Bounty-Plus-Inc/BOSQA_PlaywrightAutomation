@@ -47,7 +47,7 @@ test('Goods Receipt', async ({ page }) => {
   // Login & Open Screen
   //
   await loginPage.loginAs();
-  await goodsReceiptMenu.open();
+  await goodsReceiptMenu.openTransaction('Goods Receipt');
   await goodsReceiptPage.expectLoaded();
 
   await takeStepScreenshot(
@@ -69,7 +69,7 @@ test('Goods Receipt', async ({ page }) => {
   await takeStepScreenshot(
     page,
     testName,
-    '01_INVENTORY_GOODS_RECEIPT_ITEM_ADDED'
+    '01_INVENTORY_GOODS_ISSUE_ITEM_ADDED'
   );
 
   //
@@ -121,12 +121,12 @@ test('Goods Receipt', async ({ page }) => {
   const hasBatch = await goodsReceiptPage.clickInventoryButtonIfExists();
 
   if (hasBatch) {
-  await takeStepScreenshot(
-    page,
-    testName,
-    '08_INVENTORY_BATCH_POPUP_COMPLETED'
-  );
-}
+    await takeStepScreenshot(
+      page,
+      testName,
+      '08_INVENTORY_BATCH_POPUP_COMPLETED'
+    );
+  }
   //
   // Update Line
   //
@@ -152,7 +152,7 @@ test('Goods Receipt', async ({ page }) => {
   //
   // Journal Entry Validation
   //
- const journalPage = await goodsReceiptPage.clickJournalEntry();
+  const journalPage = await goodsReceiptPage.clickJournalEntry();
 
   const journal = await goodsReceiptPage.validateJournalEntry(journalPage);
   await takeStepScreenshot(
@@ -160,7 +160,7 @@ test('Goods Receipt', async ({ page }) => {
     testName,
     '07_INVENTORY_GOODS_RECEIPT_JOURNAL_ENTRY'
   );
-  
+
   // Close popup and return to Goods Receipt
   await goodsReceiptPage.closeJournalEntry(journalPage);
   recordModuleDocNo(
