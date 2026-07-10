@@ -372,13 +372,13 @@ Dropdown:
 
 ```js
 {
-  id: 'mode',
+  id: 'shipToCode',
   type: 'dropdown',
-  label: 'Mode',
-  envKey: 'BPI_YOUR_MODE',
+  label: 'Ship To Code',
+  envKey: 'BPI_SHIP_TO_CODE',
   options: [
-    { label: 'Display', value: 'display' },
-    { label: 'Replicate', value: 'replicate' }
+    { label: 'MAIN', value: 'MAIN' },
+    { label: 'BRANCH', value: 'BRANCH' }
   ]
 }
 ```
@@ -386,7 +386,7 @@ Dropdown:
 Read dropdown:
 
 ```js
-const mode = process.env.BPI_YOUR_MODE || '';
+const shipToCode = process.env.BPI_SHIP_TO_CODE || '';
 ```
 
 ## 11. Module-Specific Env Names
@@ -596,19 +596,15 @@ tests/utilities/find-document.spec.js
 config/dashboard/testResults.js
 ```
 
-Display mode:
+Find Document execute flow:
 
 ```text
 Open module
 Find document
 Load document
-Stop
-```
-
-Replicate mode:
-
-```text
-Open module
+Read source document data
+Run configured replicate function
+Write result table output
 Find document
 Load document
 Capture data

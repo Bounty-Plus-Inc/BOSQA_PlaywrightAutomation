@@ -556,11 +556,40 @@ class SalesOrder extends SalesOrderPage {
     }
 
     const select = await this.findInAllFrames(selector, 20);
-    await select.selectOption(value);
-    await expect(select).toHaveValue(value, { timeout: 5000 });
+    const readActualValue = async () => {
+      const currentSelect = await this.findInAllFrames(selector, 3).catch(() => null);
+      if (!currentSelect) return '';
+
+      const currentValue = await currentSelect
+        .evaluate((node) => {
+          if ('value' in node) return node.value;
+          return node.innerText || node.textContent || '';
+        })
+        .catch(() => '');
+      return this.normalizeComparableText(currentValue);
+    };
+
+    const currentValue = await readActualValue();
+    if (!this.valuesAreEquivalent(value, currentValue)) {
+      const isDisabled = await select.evaluate((node) => Boolean(node.disabled)).catch(() => true);
+      const isVisible = await select.isVisible().catch(() => false);
+
+      if (isVisible && !isDisabled) {
+        await select.selectOption(value).catch(async () => {
+          await this.setFieldValueThroughDom(select, value);
+        });
+      } else {
+        console.log(
+          `[SALES ORDER RECREATE] Line ${fieldName} is disabled; setting "${value}" through DOM events.`
+        );
+        await this.setFieldValueThroughDom(select, value);
+      }
+    }
+
+    await this.waitForEquivalentValue(readActualValue, value);
     return {
       expectedValue: value,
-      actualValue: this.normalizeComparableText(await select.inputValue().catch(() => ''))
+      actualValue: await readActualValue()
     };
   }
 

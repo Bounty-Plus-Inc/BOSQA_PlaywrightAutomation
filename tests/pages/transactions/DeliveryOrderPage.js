@@ -30,7 +30,7 @@ const DELIVERY_COPY_LINE_FIELDS = [
   { label: 'Profit Center Name', fieldName: 'u_profitcentername' },
   { label: 'Business Center', fieldName: 'u_business_center' }
 ];
-
+// ANG TAGAL MAG 5:30 GIATAY
 class DeliveryOrderPage extends BasePage {
   async expectLoaded() {
     await expect
@@ -204,7 +204,11 @@ class DeliveryOrderPage extends BasePage {
       await options.beforeSelect(bpCFLPage);
     }
 
-    const selectedCode = await bpCFL.selectCustomerCode(bpCode);
+    const selectedCode = await bpCFL.selectCode(bpCode, {
+      entityName: 'Customer code',
+      fieldName: 'custno',
+      columnId: 'col_custnoT1'
+    });
     const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"], input#df_bpcode', 20);
     await expect(bpCodeInput).toHaveValue(selectedCode, { timeout: 5000 });
     return selectedCode;

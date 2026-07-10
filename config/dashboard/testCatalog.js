@@ -128,7 +128,6 @@ export function getTestCatalog() {
       cards: testCards[resultId] || [],
       actions: result?.actions || [],
       itemCountEnvKey: result?.itemCountEnvKey || '',
-      documentRunModes: result?.documentRunModes || [],
       documentNumberInput: Boolean(result?.documentNumberInput),
       utilities: []
     };
@@ -159,7 +158,6 @@ export function getTestCatalog() {
         status: findDocumentTest.status,
         modules: findDocumentTest.modules,
         documentNumberInput: findDocumentTest.documentNumberInput,
-        documentRunModes: findDocumentTest.documentRunModes,
         action: {
           id: action.id,
           label: action.label
@@ -179,7 +177,6 @@ export function getTestCatalog() {
     dataInputs: [],
     cards: [],
     actions: [],
-    documentRunModes: [],
     documentNumberInput: false,
     utilities: [],
     scaffoldGenerator: true
