@@ -6,6 +6,30 @@ const { BasePage } = require('../base/BasePage');
 const { BusinessPartnerCFL } = require('../popups/BusinessPartnerCFL');
 // This is for shared Copy From popup behavior.
 const { CopyFrom } = require('../popups/CopyFrom');
+// This is for Delivery Order custom CFL fields.
+const { PlateNumberCFL, TruckCFL } = require('../../helpers/customCFL');
+// This is for attaching a generated file through the popup attachment flow.
+const { uploadPopupAttachment } = require('../../helpers/popup-attachment');
+
+const DELIVERY_COPY_LINE_FIELDS = [
+  { label: 'Item Code', fieldName: 'itemcode' },
+  { label: 'Item Description', fieldName: 'itemdesc' },
+  { label: 'U Quantity 1', fieldName: 'u_quantity1', numeric: true },
+  { label: 'U Quantity 2', fieldName: 'u_quantity2', numeric: true },
+  { label: 'UOM', fieldName: 'uom' },
+  { label: 'U UOM', fieldName: 'u_uom' },
+  { label: 'Unit Price', fieldName: 'unitprice', numeric: true },
+  { label: 'Discount Percent', fieldName: 'discperc', numeric: true },
+  { label: 'Discount Amount', fieldName: 'discamount', numeric: true },
+  { label: 'Price', fieldName: 'price', numeric: true },
+  { label: 'VAT Code', fieldName: 'vatcode' },
+  { label: 'Line Total', fieldName: 'linetotal', numeric: true },
+  { label: 'Warehouse Code', fieldName: 'whscode' },
+  { label: 'Warehouse Name', fieldName: 'u_warehousename' },
+  { label: 'Profit Center Code', fieldName: 'drcode' },
+  { label: 'Profit Center Name', fieldName: 'u_profitcentername' },
+  { label: 'Business Center', fieldName: 'u_business_center' }
+];
 
 class DeliveryOrderPage extends BasePage {
   async expectLoaded() {
@@ -234,7 +258,12 @@ class DeliveryOrderPage extends BasePage {
       await hooks.afterItemsLoaded(copyFrom);
     }
 
-    await copyFrom.selectFirstItem({ tableId: 'T2' });
+    const selectedItem = await copyFrom.selectFirstItem({ tableId: 'T2' });
+    const sourceLineValues = await copyFrom.readTableRowValues({
+      tableId: 'T2',
+      rowNumber: selectedItem.rowNumber,
+      fields: DELIVERY_COPY_LINE_FIELDS.map((field) => field.fieldName)
+    });
     if (hooks.afterItemSelected) {
       await hooks.afterItemSelected(copyFrom);
     }
@@ -243,15 +272,42 @@ class DeliveryOrderPage extends BasePage {
     await copyFrom.clickFinish();
     await closePromise;
     await this.expectFirstLineItemCodeFilled();
+    const lineCopyValidations = await this.expectCopiedLineItem({
+      sourceDocNo: selectedHeader.docNo || salesOrderDocNo || '',
+      sourceLineValues,
+      targetRowNumber: 1
+    });
+
+    if (hooks.afterLineCopied) {
+      await hooks.afterLineCopied(lineCopyValidations);
+    }
+
+    const deliveryDetailValidations = await this.completeDeliveryDetails();
+
+    if (hooks.afterDeliveryDetailsCompleted) {
+      await hooks.afterDeliveryDetailsCompleted(deliveryDetailValidations);
+    }
+
+    const draftAttachmentResult = await this.saveAsDraftValidateIrcdAndAttach({
+      moduleName: 'DeliveryOrder'
+    });
+
+    if (hooks.afterDraftAttachmentCompleted) {
+      await hooks.afterDraftAttachmentCompleted(draftAttachmentResult);
+    }
 
     if (hooks.afterFinished) {
-      await hooks.afterFinished(selectedHeader, copyFrom);
+      await hooks.afterFinished(selectedHeader, copyFrom, lineCopyValidations);
     }
 
     return {
       bpCode: selectedBpCode,
       sourceDocNo: selectedHeader.docNo || salesOrderDocNo || '',
-      sourceRowNumber: selectedHeader.rowNumber
+      sourceRowNumber: selectedHeader.rowNumber,
+      sourceLineRowNumber: selectedItem.rowNumber,
+      lineCopyValidations,
+      deliveryDetailValidations,
+      draftAttachmentResult
     };
   }
 
@@ -268,6 +324,384 @@ class DeliveryOrderPage extends BasePage {
         { timeout: 20000 }
       )
       .not.toBe('');
+  }
+
+  async completeDeliveryDetails() {
+    const validations = [];
+
+    validations.push(await this.selectPrimaryDocSeries());
+    await (await this.findInAllFrames('xpath=//*[@id="tab1nav5"]', 20)).click();
+    validations.push(await TruckCFL.selectFirstTruck(this));
+    validations.push(await PlateNumberCFL.selectFirstPlateNumber(this));
+    validations.push(await this.selectInvoiceDeliveryDate());
+
+    return validations;
+  }
+
+  async selectPrimaryDocSeries() {
+    const docSeries = await this.findInAllFrames('xpath=//*[@id="df_docseries"]', 20);
+    await docSeries.selectOption({ label: 'Primary' }).catch(async () => {
+      const optionValue = await docSeries
+        .locator('option')
+        .nth(15)
+        .getAttribute('value');
+      await docSeries.selectOption(optionValue);
+    });
+
+    await expect(docSeries.locator('option:checked')).toHaveText('Primary', { timeout: 5000 });
+
+    return {
+      label: 'Document Series',
+      expectedValue: 'Primary',
+      actualValue: this.normalizeComparableText(
+        await docSeries.locator('option:checked').textContent().catch(() => '')
+      ),
+      passed: true
+    };
+  }
+
+  async selectInvoiceDeliveryDate() {
+    const previousValue = await this.readInvoiceDeliveryDateValue();
+    const popupPromise = Promise.race([
+      this.page.waitForEvent('popup', { timeout: 5000 }).catch(() => null),
+      this.page.context().waitForEvent('page', { timeout: 5000 }).catch(() => null)
+    ]);
+    const dateSelector = await this.findInAllFrames('xpath=//*[@id="cfl_u_invdeldate"]', 20);
+    await dateSelector.click();
+
+    const popupPage = await popupPromise;
+    if (popupPage) {
+      await popupPage.waitForLoadState('domcontentloaded').catch(() => {});
+      const popupDate = await popupPage.locator('xpath=/html/body/center/table[2]/tbody/tr[8]/td/a');
+      const closePromise = popupPage.waitForEvent('close', { timeout: 5000 }).catch(() => {});
+      await popupDate.click();
+      await closePromise;
+    } else {
+      const dateOption = await this.findInAllFrames(
+        'xpath=/html/body/center/table[2]/tbody/tr[8]/td/a',
+        20
+      );
+      await dateOption.click();
+    }
+
+    const expectedTodayValues = this.getTodayDateValues();
+    const actualValue = await this.waitForInvoiceDeliveryDateToday({
+      expectedTodayValues,
+      previousValue
+    });
+
+    return {
+      label: 'Invoice Delivery Date',
+      expectedValue: expectedTodayValues[0],
+      actualValue,
+      passed: true
+    };
+  }
+
+  async waitForInvoiceDeliveryDateToday({ expectedTodayValues, previousValue }) {
+    let latestValue = '';
+
+    const matched = await expect
+      .poll(
+        async () => {
+          latestValue = await this.readInvoiceDeliveryDateValue();
+          return expectedTodayValues.includes(latestValue) ? 'today' : latestValue;
+        },
+        {
+          timeout: 10000,
+          intervals: [100, 150, 250, 500],
+          message: 'Invoice delivery date should be today after selecting the calendar date.'
+        }
+      )
+      .toBe('today')
+      .then(() => true)
+      .catch(() => false);
+
+    if (!matched) {
+      throw new Error(
+        `Invoice delivery date should be today's date. ` +
+          `Expected one of "${expectedTodayValues.join(', ')}", actual "${latestValue || '(blank)'}". ` +
+          `Previous="${previousValue}".`
+      );
+    }
+
+    return latestValue;
+  }
+
+  async readInvoiceDeliveryDateValue() {
+    const dateInput = await this.findInAllFrames('xpath=//*[@id="df_u_invdeldate"]', 3)
+      .catch(() => null);
+    if (!dateInput) return '';
+
+    return this.normalizeComparableText(
+      await dateInput
+        .evaluate((element) => {
+          if ('value' in element) return element.value;
+          return element.innerText || element.textContent || '';
+        })
+        .catch(() => '')
+    );
+  }
+
+  getTodayDateValues() {
+    const today = new Date();
+    const yyyy = String(today.getFullYear());
+    const m = String(today.getMonth() + 1);
+    const mm = m.padStart(2, '0');
+    const d = String(today.getDate());
+    const dd = d.padStart(2, '0');
+
+    return Array.from(new Set([
+      `${mm}/${dd}/${yyyy}`,
+      `${m}/${d}/${yyyy}`,
+      `${yyyy}-${mm}-${dd}`,
+      `${yyyy}-${m}-${d}`,
+      `${dd}/${mm}/${yyyy}`,
+      `${d}/${m}/${yyyy}`
+    ]));
+  }
+
+  async saveAsDraftValidateIrcdAndAttach({ moduleName = 'DeliveryOrder' } = {}) {
+    await this.clickSaveAsDraft();
+    const docNo = await this.readDocNoFromField();
+    const ircdValidation = await this.validateIrcdVersion();
+    const attachment = await uploadPopupAttachment(this, {
+      moduleName,
+      docNo
+    });
+
+    return {
+      docNo,
+      validations: [
+        ircdValidation,
+        {
+          label: 'Popup Attachment',
+          expectedValue: attachment.expectedValue,
+          actualValue: attachment.actualValue,
+          passed: attachment.passed
+        }
+      ],
+      attachment
+    };
+  }
+
+  async clickSaveAsDraft() {
+    const dialogHandler = async (dialog) => {
+      await dialog.accept().catch(async () => {
+        await dialog.dismiss().catch(() => {});
+      });
+    };
+
+    this.page.on('dialog', dialogHandler);
+    try {
+      const saveAsDraftButton = await this.findInAllFrames('xpath=//*[@id="btnSaveAsDraft"]', 20)
+        .catch(() => this.findInAllFrames('#btnSaveAsDraft', 20));
+      await saveAsDraftButton.click();
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+      await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+      await this.page.waitForTimeout(1000);
+    } finally {
+      this.page.off('dialog', dialogHandler);
+    }
+  }
+
+  async readDocNoFromField() {
+    await expect
+      .poll(
+        async () => {
+          const docNoField = await this.findInAllFrames('xpath=//*[@id="df_docno"]', 3)
+            .catch(() => null);
+          if (!docNoField) return '';
+
+          return this.normalizeComparableText(
+            await docNoField
+              .evaluate((element) => {
+                if ('value' in element) return element.value;
+                return element.innerText || element.textContent || '';
+              })
+              .catch(() => '')
+          );
+        },
+        {
+          timeout: 20000,
+          message: 'Delivery Order doc no should be available from df_docno after Save as Draft.'
+        }
+      )
+      .not.toBe('');
+
+    const docNoField = await this.findInAllFrames('xpath=//*[@id="df_docno"]', 20);
+    return this.normalizeComparableText(
+      await docNoField
+        .evaluate((element) => {
+          if ('value' in element) return element.value;
+          return element.innerText || element.textContent || '';
+        })
+        .catch(() => '')
+    );
+  }
+
+  async validateIrcdVersion() {
+    await (await this.findInAllFrames('xpath=//*[@id="tab1nav4"]', 20)).click();
+
+    await expect
+      .poll(
+        async () => {
+          const ircdVersion = await this.findInAllFrames('xpath=//*[@id="df_ircdversion"]', 3)
+            .catch(() => null);
+          if (!ircdVersion) return '';
+
+          return this.normalizeComparableText(
+            await ircdVersion
+              .evaluate((element) => {
+                if ('value' in element) return element.value;
+                return element.innerText || element.textContent || '';
+              })
+              .catch(() => '')
+          );
+        },
+        {
+          timeout: 10000,
+          message: 'Delivery Order IRCD Version should be 1 after Save as Draft.'
+        }
+      )
+      .toBe('1');
+
+    return {
+      label: 'IRCD Version',
+      expectedValue: '1',
+      actualValue: '1',
+      passed: true
+    };
+  }
+
+  async expectCopiedLineItem({ sourceDocNo, sourceLineValues, targetRowNumber = 1 }) {
+    const targetLineValues = await this.readLineItemRowValues({
+      rowNumber: targetRowNumber,
+      fields: DELIVERY_COPY_LINE_FIELDS.map((field) => field.fieldName).concat('basedocno')
+    });
+    const validations = [];
+
+    for (const field of DELIVERY_COPY_LINE_FIELDS) {
+      const expected = sourceLineValues[field.fieldName];
+      const actual = targetLineValues[field.fieldName];
+
+      if (!expected?.found) continue;
+      if (!actual?.found) {
+        throw new Error(
+          `Delivery Order copied line ${field.label} field was available in Copy From but missing in Delivery Order.`
+        );
+      }
+
+      const expectedValue = this.normalizeComparableText(expected.value);
+      const actualValue = this.normalizeComparableText(actual.value);
+
+      if (!this.valuesAreEquivalent(expectedValue, actualValue, { numeric: field.numeric })) {
+        throw new Error(
+          `Delivery Order copied line ${field.label} mismatch. ` +
+            `Expected "${expectedValue}", actual "${actualValue}".`
+        );
+      }
+
+      validations.push({
+        label: field.label,
+        expectedValue,
+        actualValue,
+        passed: true
+      });
+    }
+
+    if (!validations.length) {
+      throw new Error('Delivery Order copied line validation could not read any comparable Copy From fields.');
+    }
+
+    const actualBaseDocNo = this.normalizeComparableText(targetLineValues.basedocno?.value);
+    const expectedBaseDocNo = this.normalizeComparableText(sourceDocNo);
+    if (expectedBaseDocNo && actualBaseDocNo !== expectedBaseDocNo) {
+      throw new Error(
+        `Delivery Order copied line Base Doc No mismatch. ` +
+          `Expected "${expectedBaseDocNo}", actual "${actualBaseDocNo}".`
+      );
+    }
+
+    if (expectedBaseDocNo) {
+      validations.push({
+        label: 'Base Doc No',
+        expectedValue: expectedBaseDocNo,
+        actualValue: actualBaseDocNo,
+        passed: true
+      });
+    }
+
+    return validations;
+  }
+
+  async readLineItemRowValues({ rowNumber = 1, fields = [] } = {}) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      for (const frame of this.page.frames()) {
+        try {
+          if (frame.isDetached()) continue;
+
+          const values = await frame.evaluate(({ targetRowNumber, targetFields }) => {
+            const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+            const rowExists = Boolean(
+              document.getElementById(`df_itemcodeT1r${targetRowNumber}`) ||
+                document.querySelector('table#T1')
+            );
+            if (!rowExists) return null;
+
+            return Object.fromEntries(
+              targetFields.map((fieldName) => {
+                const input = document.getElementById(`df_${fieldName}T1r${targetRowNumber}`);
+                const label = document.getElementById(`dd_${fieldName}T1r${targetRowNumber}`);
+                const element = input || label;
+
+                return [
+                  fieldName,
+                  {
+                    found: Boolean(element),
+                    value: normalize(input?.value || label?.textContent || label?.innerText)
+                  }
+                ];
+              })
+            );
+          }, { targetRowNumber: rowNumber, targetFields: fields });
+
+          if (values) return values;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      await this.page.waitForTimeout(500);
+    }
+
+    throw new Error(`Unable to read Delivery Order line row ${rowNumber}.`);
+  }
+
+  normalizeComparableText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  parseComparableNumber(value) {
+    const normalized = this.normalizeComparableText(value).replace(/,/g, '');
+    if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) return null;
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  valuesAreEquivalent(expectedValue, actualValue, options = {}) {
+    const expectedText = this.normalizeComparableText(expectedValue);
+    const actualText = this.normalizeComparableText(actualValue);
+    if (actualText === expectedText) return true;
+
+    if (!options.numeric) return false;
+
+    const expectedNumber = this.parseComparableNumber(expectedText);
+    const actualNumber = this.parseComparableNumber(actualText);
+    if (expectedNumber === null || actualNumber === null) return false;
+
+    return Math.abs(expectedNumber - actualNumber) < 0.000001;
   }
 }
 

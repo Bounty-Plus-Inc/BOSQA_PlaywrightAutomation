@@ -34,13 +34,15 @@ class CopyFrom extends BasePage {
   }
 
   async selectFirstItem({ tableId = 'T2' } = {}) {
-    const checkbox = await this.findInAllFrames(`input#df_checked${tableId}`, 5)
-      .catch(() => this.findInAllFrames(`input#df_checked${tableId}r1`, 10));
+    const rowNumber = await this.findRowNumber({ tableId });
+    const checkbox = await this.findInAllFrames(`input#df_checked${tableId}r${rowNumber}`, 5)
+      .catch(() => this.findInAllFrames(`input#df_checked${tableId}`, 10));
     await checkbox.scrollIntoViewIfNeeded().catch(() => {});
     await checkbox.check({ force: true }).catch(async () => {
       await checkbox.click({ force: true });
     });
     await expect(checkbox).toBeChecked();
+    return { rowNumber };
   }
 
   async expectItemsLoaded({ tableId = 'T2' } = {}) {
@@ -89,7 +91,11 @@ class CopyFrom extends BasePage {
               return '';
             }
 
-            return rowFromId(document.querySelector(`input[id^="df_checked${targetTableId}r"]`)?.id);
+            const checkedInput = document.querySelector(`input[id^="df_checked${targetTableId}r"]`);
+            if (checkedInput) return rowFromId(checkedInput.id);
+
+            const legacyCheckedInput = document.querySelector(`input#df_checked${targetTableId}`);
+            return legacyCheckedInput ? '1' : '';
           }, { expectedDocNo: docNo, targetTableId: tableId });
 
           if (rowNumber) return rowNumber;
@@ -102,6 +108,54 @@ class CopyFrom extends BasePage {
     }
 
     throw new Error(`Copy From row not found in ${tableId}: ${docNo || '(first row)'}`);
+  }
+
+  async readTableRowValues({ tableId = 'T2', rowNumber = 1, fields = [] } = {}) {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      for (const frame of this.page.frames()) {
+        try {
+          if (frame.isDetached()) continue;
+
+          const values = await frame.evaluate(({ targetTableId, targetRowNumber, targetFields }) => {
+            const normalize = (value) => String(value || '').replace(/\s+/g, ' ').trim();
+            const rowExists = Boolean(
+              document.getElementById(`df_checked${targetTableId}r${targetRowNumber}`) ||
+                document.getElementById(`df_itemcode${targetTableId}r${targetRowNumber}`) ||
+                document.querySelector(`table#${targetTableId}`)
+            );
+            if (!rowExists) return null;
+
+            return Object.fromEntries(
+              targetFields.map((fieldName) => {
+                const input = document.getElementById(`df_${fieldName}${targetTableId}r${targetRowNumber}`);
+                const label = document.getElementById(`dd_${fieldName}${targetTableId}r${targetRowNumber}`);
+                const element = input || label;
+
+                return [
+                  fieldName,
+                  {
+                    found: Boolean(element),
+                    value: normalize(input?.value || label?.textContent || label?.innerText)
+                  }
+                ];
+              })
+            );
+          }, {
+            targetTableId: tableId,
+            targetRowNumber: rowNumber,
+            targetFields: fields
+          });
+
+          if (values) return values;
+        } catch (e) {
+          continue;
+        }
+      }
+
+      await this.page.waitForTimeout(500);
+    }
+
+    throw new Error(`Unable to read Copy From ${tableId} row ${rowNumber}.`);
   }
 }
 

@@ -200,6 +200,52 @@ async function replicateSalesOrderTransaction({ capturedData, page, testId, test
         afterItemSelected: async (copyFrom) => {
           await takeStepScreenshot(copyFrom.page, testName, '18_RECREATE_DELIVERY_ITEMS_SELECTED');
         },
+        afterLineCopied: async (validations) => {
+          for (const validation of validations) {
+            recordModuleDocNo(
+              `Delivery Order Copied Line ${validation.label}`,
+              validation.expectedValue || '-',
+              validation.actualValue || '-',
+              testId,
+              validation.passed
+                ? 'Validated successfully against the copied source line.'
+                : 'Actual copied value differs from the source line.'
+            );
+          }
+        },
+        afterDeliveryDetailsCompleted: async (validations) => {
+          for (const validation of validations) {
+            recordModuleDocNo(
+              `Delivery Order ${validation.label}`,
+              validation.expectedValue || '-',
+              validation.actualValue || '-',
+              testId,
+              validation.passed
+                ? 'Validated successfully against the expected value.'
+                : 'Actual value differs from the expected value.'
+            );
+          }
+        },
+        afterDraftAttachmentCompleted: async (result) => {
+          recordModuleDocNo(
+            'Delivery Order Draft',
+            result.docNo || '-',
+            'Saved as Draft',
+            testId,
+            'Delivery Order was saved as draft before validating IRCD and attachment.'
+          );
+          for (const validation of result.validations) {
+            recordModuleDocNo(
+              `Delivery Order ${validation.label}`,
+              validation.expectedValue || '-',
+              validation.actualValue || '-',
+              testId,
+              validation.passed
+                ? 'Validated successfully against the expected value.'
+                : 'Actual value differs from the expected value.'
+            );
+          }
+        },
         afterFinished: async () => {
           await takeStepScreenshot(page, testName, '19_RECREATE_DELIVERY_ITEMS_COPIED');
         }
@@ -231,8 +277,19 @@ async function replicateSalesOrderTransaction({ capturedData, page, testId, test
     docSeriesResult.actualValue
   );
 
-  await salesOrder.saveAsDraft();
+  const draftOutcome = await salesOrder.saveAsDraft();
   const draftMemory = await salesOrder.readDocumentMemory();
+  if (draftOutcome.isPostingDateOrDueDateInvalid) {
+    recordModuleDocNo(
+      'Sales Order',
+      draftMemory.docNo,
+      'Created Transaction is not valid to current posting period or Duedate',
+      testId,
+      'Check Posting Date or Due Date setup to proceed the selected transaction.'
+    );
+    return 'success';
+  }
+
   recordModuleDocNo('Recreated Sales Order', draftMemory.docNo, 'Draft', testId);
   await takeStepScreenshot(page, testName, '06_RECREATE_STATUS_DRAFT');
 
@@ -242,6 +299,18 @@ async function replicateSalesOrderTransaction({ capturedData, page, testId, test
       fallbackBpCode: draftMemory.bpCode,
       fallbackDocNo: draftMemory.docNo
     });
+
+  if (addOutcome.isPostingDateOrDueDateInvalid) {
+    const memory = await readLatestMemory();
+    recordModuleDocNo(
+      'Sales Order',
+      memory.docNo,
+      'Created Transaction is not valid to current posting period or Duedate',
+      testId,
+      'Check Posting Date or Due Date setup to proceed the selected transaction.'
+    );
+    return 'success';
+  }
 
   if (!addOutcome.isOpen) {
     if (!addOutcome.isCreditLimitBlocked) {
