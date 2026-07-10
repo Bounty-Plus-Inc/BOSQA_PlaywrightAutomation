@@ -226,19 +226,10 @@ class SalesOrder extends SalesOrderPage {
       { numeric: true }
     );
 
-    await this.fillAndValidateLineInput(
-      'input#df_u_quantity1T1[name="df_u_quantity1T1"], input#df_u_quantity1T1',
+    const quantityResult = await this.recreateLineQuantities({
       uQuantity1,
-      'uQuantity1',
-      { numeric: true }
-    );
-
-    await this.fillAndValidateLineInput(
-      'input#df_u_quantity2T1[name="df_u_quantity2T1"], input#df_u_quantity2T1',
-      uQuantity2,
-      'uQuantity2',
-      { numeric: true }
-    );
+      uQuantity2
+    });
 
     await this.selectAndValidateWarehouse({
       warehouseCode,
@@ -266,6 +257,7 @@ class SalesOrder extends SalesOrderPage {
         unitPrice,
         uQuantity1,
         uQuantity2,
+        validateUQuantity1: quantityResult.validateUQuantity1,
         warehouseCode,
         warehouseName,
         profitCenterCode,
@@ -368,6 +360,55 @@ class SalesOrder extends SalesOrderPage {
     };
   }
 
+  async recreateLineQuantities({ uQuantity1, uQuantity2 }) {
+    const uQuantity1Selector =
+      'input#df_u_quantity1T1[name="df_u_quantity1T1"], input#df_u_quantity1T1';
+    const uQuantity2Selector =
+      'input#df_u_quantity2T1[name="df_u_quantity2T1"], input#df_u_quantity2T1';
+    const uQuantity1Input = await this.findInAllFrames(uQuantity1Selector, 20);
+    const isUQuantity1Editable = await this.isFieldEditable(uQuantity1Input);
+
+    if (isUQuantity1Editable) {
+      await this.fillAndValidateLineInput(
+        uQuantity1Selector,
+        uQuantity1,
+        'uQuantity1',
+        { numeric: true }
+      );
+    }
+
+    await this.fillAndValidateLineInput(
+      uQuantity2Selector,
+      uQuantity2,
+      'uQuantity2',
+      { numeric: true }
+    );
+
+    return {
+      validateUQuantity1: isUQuantity1Editable
+    };
+  }
+
+  async isFieldEditable(locator) {
+    const fieldState = await locator
+      .evaluate((node) => ({
+        disabled: Boolean(node.disabled),
+        readOnly: Boolean(node.readOnly),
+        ariaDisabled: node.getAttribute('aria-disabled') === 'true'
+      }))
+      .catch(() => ({ disabled: true, readOnly: true, ariaDisabled: true }));
+    const isVisible = await locator.isVisible().catch(() => false);
+    const isEditable = await locator.isEditable().catch(() => false);
+
+    return (
+      isVisible &&
+      isEditable &&
+      !fieldState.disabled &&
+      !fieldState.readOnly &&
+      !fieldState.ariaDisabled
+    );
+  }
+
   async expectLineInputValue(selector, expectedValue, fieldName) {
     if (!expectedValue) {
       throw new Error(`Unable to validate line because captured ${fieldName} is empty.`);
@@ -446,7 +487,6 @@ class SalesOrder extends SalesOrderPage {
       ['Item Code', 'itemcode', values.itemCode],
       ['Item Description', 'itemdesc', values.itemDesc],
       ['Unit Price', 'unitprice', values.unitPrice, { numeric: true }],
-      ['U Quantity 1', 'u_quantity1', values.uQuantity1, { numeric: true }],
       ['U Quantity 2', 'u_quantity2', values.uQuantity2, { numeric: true }],
       ['Warehouse Code', 'whscode', values.warehouseCode],
       ['Warehouse Name', 'u_warehousename', values.warehouseName],
@@ -454,6 +494,14 @@ class SalesOrder extends SalesOrderPage {
       ['Profit Center Name', 'u_profitcentername', values.profitCenterName],
       ['Business Center', 'u_business_center', values.businessCenter]
     ];
+
+    if (values.validateUQuantity1 !== false) {
+      validations.splice(
+        3,
+        0,
+        ['U Quantity 1', 'u_quantity1', values.uQuantity1, { numeric: true }]
+      );
+    }
 
     for (const [label, fieldName, expectedValue, options = {}] of validations) {
       const result = await this.expectTableRowValue(

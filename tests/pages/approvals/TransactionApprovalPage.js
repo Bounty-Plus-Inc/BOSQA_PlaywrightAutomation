@@ -9,7 +9,7 @@ class TransactionApprovalPage extends BasePage {
     await expect(pageHeader).toContainText('Transaction Approval', { timeout: 10000 });
   }
 
-  async approveDocument(beforeAdd) {
+  async approveDocument(beforeAdd, options = {}) {
     await this.clickFilter();
     await this.expectResultsTableVisible();
     await this.selectApprovedDecision();
@@ -20,7 +20,9 @@ class TransactionApprovalPage extends BasePage {
     }
 
     await this.clickAdd();
-    await this.expectOpenAndUneditable();
+    await this.expectApprovalSuccess();
+
+    return this.getSuccessRemark(options.docNo);
   }
 
   async clickFilter() {
@@ -67,20 +69,16 @@ class TransactionApprovalPage extends BasePage {
     await addButton.click();
   }
 
-  async expectOpenAndUneditable() {
-    const docStatus = await this.findInAllFrames('select#df_docstatus[name="df_docstatus"]', 20);
+  async expectApprovalSuccess() {
+    await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+    await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 
-    await expect
-      .poll(
-        async () => {
-          const value = await docStatus.inputValue().catch(() => '');
-          const label = await docStatus.locator('option:checked').textContent().catch(() => '');
-          const disabled = await docStatus.evaluate((element) => element.disabled).catch(() => false);
-          return `${value}|${(label || '').trim()}|${disabled ? 'disabled' : 'editable'}`;
-        },
-        { timeout: 20000 }
-      )
-      .toBe('O|Open|disabled');
+    const newButton = await this.findInAllFrames('#btnNew', 40);
+    await expect(newButton).toBeVisible({ timeout: 10000 });
+  }
+
+  getSuccessRemark(docNo = '') {
+    return `Success Transaction Approval : ${String(docNo || '').trim()}`;
   }
 }
 

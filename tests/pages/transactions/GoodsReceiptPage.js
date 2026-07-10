@@ -1,7 +1,7 @@
 const { expect } = require('@playwright/test');
 const { BasePage } = require('../base/BasePage');
-const { selectFromCfl } = require('../../helpers/cflHelper');
-const { fillField } = require('../../helpers/fieldHelper');
+const { selectFromCfl } = require('../../helpers/cflHelper-udarbe');
+const { fillField } = require('../../helpers/fieldHelper-udarbe');
 
 class GoodsReceiptPage extends BasePage {
   async expectLoaded() {
@@ -71,80 +71,80 @@ class GoodsReceiptPage extends BasePage {
   }
 
   async clickInventoryButtonIfExists() {
-  const button = await this.findInAllFrames('#btnInventory').catch(() => null);
+    const button = await this.findInAllFrames('#btnInventory').catch(() => null);
 
-  if (!button || !(await button.isVisible())) {
-    console.log('[INFO] Inventory button does not exist.');
-    return false;
+    if (!button || !(await button.isVisible())) {
+      console.log('[INFO] Inventory button does not exist.');
+      return false;
+    }
+
+    console.log('[INFO] Inventory button exists. Clicking...');
+
+    // Wait for popup
+    const popupPromise = this.page.context().waitForEvent('page');
+
+    await button.click();
+
+    const popup = await popupPromise;
+
+    await popup.waitForLoadState('domcontentloaded');
+    await popup.waitForTimeout(5000);
+
+    // Wait until controls are ready
+    await popup.locator('#df_batchT15').waitFor({
+      state: 'visible',
+      timeout: 60000
+    });
+
+    // Read required quantity
+    const requiredQty = await popup.locator('#df_requiredqty').inputValue();
+
+    // Dates
+    const today = new Date();
+    const expDate = new Date(today);
+    expDate.setFullYear(today.getFullYear() + 1);
+
+    const formatDate = date =>
+      `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+
+    // Fill values
+    await popup.locator('#df_batchT15').fill('123');
+    await popup.locator('#df_qtyT15').fill(requiredQty);
+    await popup.locator('#df_u_batchcodeT15').fill('123');
+    await popup.locator('#df_u_proddateT15').fill(formatDate(today));
+    await popup.locator('#df_u_expdateT15').fill(formatDate(expDate));
+
+    console.log('[INFO] Clicking Update...');
+
+    await popup.locator('#T15_btnUpdate').click();
+
+    // Give the popup time to process
+    await popup.waitForTimeout(2000);
+
+    console.log('[INFO] Clicking OK...');
+
+    const okButton = popup.getByRole('link', { name: 'OK' });
+
+    await Promise.all([
+      popup.waitForEvent('close'),
+      okButton.click()
+    ]);
+
+    console.log('[INFO] Popup closed.');
+
+    // Return to Goods Receipt page
+    await this.page.bringToFront();
+
+    const addButton = await this.findInAllFrames('#btnAdd');
+
+    await expect(addButton).toBeVisible({
+      timeout: 30000
+    });
+
+    console.log('[INFO] Returned to Goods Receipt.');
+
+    return true;
   }
-
-  console.log('[INFO] Inventory button exists. Clicking...');
-
-  // Wait for popup
-  const popupPromise = this.page.context().waitForEvent('page');
-
-  await button.click();
-
-  const popup = await popupPromise;
-
-  await popup.waitForLoadState('domcontentloaded');
-  await popup.waitForTimeout(5000);
-
-  // Wait until controls are ready
-  await popup.locator('#df_batchT15').waitFor({
-    state: 'visible',
-    timeout: 60000
-  });
-
-  // Read required quantity
-  const requiredQty = await popup.locator('#df_requiredqty').inputValue();
-
-  // Dates
-  const today = new Date();
-  const expDate = new Date(today);
-  expDate.setFullYear(today.getFullYear() + 1);
-
-  const formatDate = date =>
-    `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
-
-  // Fill values
-  await popup.locator('#df_batchT15').fill('123');
-  await popup.locator('#df_qtyT15').fill(requiredQty);
-  await popup.locator('#df_u_batchcodeT15').fill('123');
-  await popup.locator('#df_u_proddateT15').fill(formatDate(today));
-  await popup.locator('#df_u_expdateT15').fill(formatDate(expDate));
-
-  console.log('[INFO] Clicking Update...');
-
-  await popup.locator('#T15_btnUpdate').click();
-
-  // Give the popup time to process
-  await popup.waitForTimeout(2000);
-
-  console.log('[INFO] Clicking OK...');
-
-  const okButton = popup.getByRole('link', { name: 'OK' });
-
-  await Promise.all([
-    popup.waitForEvent('close'),
-    okButton.click()
-  ]);
-
-  console.log('[INFO] Popup closed.');
-
-  // Return to Goods Receipt page
-  await this.page.bringToFront();
-
-  const addButton = await this.findInAllFrames('#btnAdd');
-
-  await expect(addButton).toBeVisible({
-    timeout: 30000
-  });
-
-  console.log('[INFO] Returned to Goods Receipt.');
-
-  return true;
-}
   // ============================================================
   // Normal input fields
   // ============================================================
@@ -166,84 +166,31 @@ class GoodsReceiptPage extends BasePage {
   // ============================================================
 
   async clickUpdate() {
-  const updateButton = await this.findInAllFrames('#T1_btnUpdate');
+    const updateButton = await this.findInAllFrames('#T1_btnUpdate');
 
-  console.log('[INFO] Clicking Update...');
+    console.log('[INFO] Clicking Update...');
 
-  await updateButton.click();
+    await updateButton.click();
 
-  // Give BPI time to process the update
-  await this.page.waitForLoadState('networkidle').catch(() => {});
-  await this.page.waitForTimeout(3000);
+    // Give BPI time to process the update
+    await this.page.waitForLoadState('networkidle').catch(() => { });
+    await this.page.waitForTimeout(3000);
 
-  // Wait until Add button is ready
-  const addButton = await this.findInAllFrames('#btnAdd');
+    // Wait until Add button is ready
+    const addButton = await this.findInAllFrames('#btnAdd');
 
-  await expect(addButton).toBeVisible({
-    timeout: 30000
-  });
+    await expect(addButton).toBeVisible({
+      timeout: 30000
+    });
 
-  await expect(addButton).toBeEnabled({
-    timeout: 30000
-  });
+    await expect(addButton).toBeEnabled({
+      timeout: 30000
+    });
 
-  console.log('[INFO] Goods Receipt update completed.');
-}
+    console.log('[INFO] Goods Receipt update completed.');
+  }
 
-  // async clickAdd() {
-  //   // Accept confirmation dialog
-  //   await Promise.all([
-  //     this.page.waitForEvent('dialog').then(dialog => dialog.accept()),
-  //     (await this.findInAllFrames('#btnAdd')).click()
-  //   ]);
 
-  //   // Wait until document number is generated
-  //   await expect
-  //     .poll(async () => await this.getDocumentNo(), {
-  //       timeout: 60000
-  //     })
-  //     .not.toBe('');
-
-  //   // -----------------------------------------
-  //   // Close Print Layout popup if it appears
-  //   // -----------------------------------------
-  //   try {
-  //     const printPopup = await this.page.context().waitForEvent('page', {
-  //       timeout: 10000
-  //     });
-
-  //     await printPopup.waitForLoadState('domcontentloaded');
-
-  //     const cancelButton = printPopup.locator('a', {
-  //       hasText: 'Cancel'
-  //     });
-
-  //     if (await cancelButton.isVisible({ timeout: 5000 })) {
-  //       await cancelButton.click();
-  //     } else {
-  //       await printPopup.close().catch(() => { });
-  //     }
-
-  //     await printPopup.waitForEvent('close', {
-  //       timeout: 5000
-  //     }).catch(() => { });
-  //   } catch {
-  //     // No print popup appeared.
-  //   }
-
-  //   // -----------------------------------------
-  //   // Wait until Journal Entry link is ready
-  //   // -----------------------------------------
-  //   const journalLink = await this.findInAllFrames('#lnkbtn_jelink');
-
-  //   await expect(journalLink).toBeVisible({
-  //     timeout: 60000
-  //   });
-
-  //   await expect(journalLink).toBeEnabled({
-  //     timeout: 60000
-  //   });
-  // }
   async clickAdd() {
     const printPopupPromise = this.page.context().waitForEvent('page');
 
