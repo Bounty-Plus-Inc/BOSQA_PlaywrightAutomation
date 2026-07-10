@@ -44,7 +44,11 @@ class SalesOrderPage extends BasePage {
     if (options.beforeSelect) {
       await options.beforeSelect(customerCFLPage);
     }
-    const selectedCustomerCode = await customerCFL.selectCustomerCode(preferredCode);
+    const selectedCustomerCode = await customerCFL.selectCode(preferredCode, {
+      entityName: 'Customer code',
+      fieldName: 'custno',
+      columnId: 'col_custnoT1'
+    });
 
     const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]');
     await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 3000 });
@@ -82,7 +86,8 @@ class SalesOrderPage extends BasePage {
     if (options.beforeSelect) {
       await options.beforeSelect(bpCFLPage);
     }
-    const selectedCustomerCode = await bpCFL.selectCustomerCode(preferredCode);
+  
+    const selectedCustomerCode = await bpCFL.selectCode(preferredCode,{entityName: 'Customer code', fieldName: 'custno', columnId: 'col_custnoT1'});
     const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]');
     await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 3000 });
     return selectedCustomerCode;
