@@ -18,6 +18,8 @@ class PurchaseRequestPage extends BasePage {
     this.warehouseButton = page.locator('xpath=//*[@id="cfl_whscodeT1"]');
     this.addLineButton = page.locator('xpath=//*[@id="T1_btnUpdate"]');
     this.generalTab = page.locator('xpath=//*[@id="tab1nav5"]');
+    this.accountingTab = page.locator('xpath=//*[@id="tab1nav3"]');
+    this.paymentButton = page.locator('xpath=//*[@id="df_paymentterm"]');
     this.buyerButton = page.locator('xpath=//*[@id="cfl_u_buyer"]');
     this.approvalMatrixButton = page.locator(
       'xpath=//*[@id="cfl_u_approvalmatrixtitle"]',
@@ -150,6 +152,37 @@ class PurchaseRequestPage extends BasePage {
     await remarksTextbox.fill(remarks);
   }
 
+  async openAccountingTab() {
+    const accountingTab = await this.findInAllFrames(
+      'xpath=//*[@id="tab1nav3"]',
+      20,
+    );
+
+    await accountingTab.click();
+  }
+
+  async selectPaymentTerm() {
+    const dropdown = await this.findInAllFrames(
+      'xpath=//*[@id="df_paymentterm"]',
+      20,
+    );
+
+    const options = await dropdown.locator("option").evaluateAll((options) =>
+      options.map((option) => ({
+        value: option.value,
+        label: option.textContent.trim(),
+      })),
+    );
+
+    const validOptions = options.filter((option) => option.value);
+
+    validOptions.sort((a, b) => Number(a.value) - Number(b.value));
+
+    const lowest = validOptions[0];
+
+    await dropdown.selectOption({ value: lowest.value });
+  }
+
   async openGeneralTab() {
     const generalTab = await this.findInAllFrames(
       'xpath=//*[@id="tab1nav5"]',
@@ -223,68 +256,58 @@ class PurchaseRequestPage extends BasePage {
     await saveDraftButton.click();
   }
 
-async clickAdd() {
-  const addButton = await this.findInAllFrames(
-    'xpath=//*[@id="btnUpdate"]',
-    20,
-  );
+  async clickAdd() {
+    const addButton = await this.findInAllFrames(
+      'xpath=//*[@id="btnUpdate"]',
+      20,
+    );
 
-  await addButton.waitFor({
-    state: "visible",
-    timeout: 10000,
-  });
+    await addButton.waitFor({
+      state: "visible",
+      timeout: 10000,
+    });
 
-  await addButton.click();
-}
-
- async getStatusMessage() {
-  const statusMessage = await this.findInAllFrames(
-    'xpath=//*[@id="statusMsgColumn"]',
-    20,
-  );
-
-  console.log("InnerText:", await statusMessage.innerText());
-  console.log("TextContent:", await statusMessage.textContent());
-  console.log("InnerHTML:", await statusMessage.innerHTML());
-
-  return ((await statusMessage.textContent()) || "").trim();
-}
-
-async isAttachmentRequired() {
-  for (let i = 0; i < 10; i++) {
-    const message = (await this.getStatusMessage()).toLowerCase();
-
-
-    if (
-      message.includes("attachment") ||
-      message.includes("attach")
-    ) {
-      console.log("Attachment message detected.");
-      return true;
-    }
-
-    await this.page.waitForTimeout(500);
+    await addButton.click();
   }
 
-  return false;
-}
+  async getStatusMessage() {
+    const statusMessage = await this.findInAllFrames(
+      'xpath=//*[@id="statusMsgColumn"]',
+      20,
+    );
 
-async getDocumentNumber() {
-  const documentNumber = await this.findInAllFrames(
-    'xpath=//*[@id="df_docno"]',
-    20,
-  );
+    return ((await statusMessage.textContent()) || "").trim();
+  }
 
-  return ((await documentNumber.inputValue()) || "").trim();
-}
+  async isAttachmentRequired() {
+    for (let i = 0; i < 10; i++) {
+      const message = (await this.getStatusMessage()).toLowerCase();
 
-async readDocumentMemory() {
-  return {
-    docNo: await this.getDocumentNumber(),
-    status: await this.getStatusMessage(),
-  };
-}
+      if (message.includes("attachment") || message.includes("attach")) {
+        return true;
+      }
 
+      await this.page.waitForTimeout(500);
+    }
+
+    return false;
+  }
+
+  async getDocumentNumber() {
+    const documentNumber = await this.findInAllFrames(
+      'xpath=//*[@id="df_docno"]',
+      20,
+    );
+
+    return ((await documentNumber.inputValue()) || "").trim();
+  }
+
+  async readDocumentMemory() {
+    return {
+      docNo: await this.getDocumentNumber(),
+      status: await this.getStatusMessage(),
+    };
+  }
 }
 
 module.exports = { PurchaseRequestPage };

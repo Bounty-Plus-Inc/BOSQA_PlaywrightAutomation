@@ -483,48 +483,57 @@ export const testResults = {
         description: "Remarks were entered successfully.",
       },
 
-      "10_GENERAL_TAB_OPENED.png": {
+
+      "10_ACCOUNTING_TAB_OPENED.png": {
+        title: "Accounting Tab Opened",
+        description: "The Accounting tab was opened successfully.",
+      },
+      "11_PAYMENT_SELECTED.png": {
+        title: "Payment Term Selected",
+        description: "The payment term was selected successfully.",
+      },
+      "12_GENERAL_TAB_OPENED.png": {
         title: "General Tab Opened",
         description: "The General tab was opened successfully.",
       },
 
-      "11_BUYER_CFL_POPUP.png": {
+      "13_BUYER_CFL_POPUP.png": {
         title: "Buyer CFL Popup",
         description: "The Buyer lookup popup was displayed.",
       },
 
-      "12_BUYER_SELECTED.png": {
+      "14_BUYER_SELECTED.png": {
         title: "Buyer Selected",
         description: "The Buyer was selected successfully.",
       },
 
-      "13_APPROVAL_MATRIX_CFL_POPUP.png": {
+      "15_APPROVAL_MATRIX_CFL_POPUP.png": {
         title: "Approval Matrix CFL Popup",
         description: "The Approval Matrix lookup popup was displayed.",
       },
 
-      "14_APPROVAL_MATRIX_SELECTED.png": {
+      "16_APPROVAL_MATRIX_SELECTED.png": {
         title: "Approval Matrix Selected",
         description: "The Approval Matrix was selected successfully.",
       },
 
-      "15_DOCUMENT_SAVED_AS_DRAFT.png": {
+      "17_DOCUMENT_SAVED_AS_DRAFT.png": {
         title: "Document Saved as Draft",
         description: "The Purchase Request was successfully saved as a draft.",
       },
-      "16_ATTACHMENT_UPLOADED.png": {
+      "18_ATTACHMENT_UPLOADED.png": {
         title: "Attachment Uploaded",
         description: "The Attachment was successfully uploaded.",
       },
-      "17_DOCUMENT_ADDED.png": {
+      "19_DOCUMENT_ADDED.png": {
         title: "Document Added",
         description: "The Purchase Request was successfully added.",
       },
-      "18_TRANSACTION_APPROVAL_OPENED.png": {
+      "20_TRANSACTION_APPROVAL_OPENED.png": {
         title: "Transaction Approval Opened",
         description: "The Transaction Approval window was opened.",
       },
-      "19_PURCHASE_REQUEST_APPROVED.png": {
+      "21_PURCHASE_REQUEST_APPROVED.png": {
         title: "Purchase Request Approved",
         description: "The Purchase Request was successfully approved.",
       },
