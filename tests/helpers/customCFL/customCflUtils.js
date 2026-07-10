@@ -55,7 +55,8 @@ async function selectFirstCflValue(pageOrPageObject, selectors, helperName) {
     resultColumn,
     sourcePage,
     outputSelector: selectors.output,
-    expectedValue
+    expectedValue,
+    selectors
   });
 
   if (!outputMatched) {
@@ -81,12 +82,29 @@ async function selectResultAndWaitForOutput({
   resultColumn,
   sourcePage,
   outputSelector,
-  expectedValue
+  expectedValue,
+  selectors
 }) {
+  const selectionAttemptTimeout = selectors.selectionAttemptTimeout || 700;
+  const finalOutputTimeout = selectors.finalOutputTimeout || 2500;
   const attempts = [
     {
+      label: 'result row then OK',
+      action: async () => {
+        await resultColumn
+          .locator('xpath=ancestor::tr[1]')
+          .first()
+          .click({ force: true, timeout: 1000 });
+        const okButton = await popup.findVisibleInAllFrames(
+          'a.button:has-text("OK"), a:has-text("OK")',
+          3
+        );
+        await okButton.click({ force: true, timeout: 1000 });
+      }
+    },
+    {
       label: 'result column double-click',
-      action: async () => resultColumn.dblclick({ force: true })
+      action: async () => resultColumn.dblclick({ force: true, timeout: 1000 })
     },
     {
       label: 'result child double-click',
@@ -99,7 +117,7 @@ async function selectResultAndWaitForOutput({
       label: 'result row double-click',
       action: async () => {
         const row = resultColumn.locator('xpath=ancestor::tr[1]').first();
-        await row.dblclick({ force: true });
+        await row.dblclick({ force: true, timeout: 1000 });
       }
     },
     {
@@ -127,14 +145,6 @@ async function selectResultAndWaitForOutput({
           }
         });
       }
-    },
-    {
-      label: 'result row then OK',
-      action: async () => {
-        await resultColumn.locator('xpath=ancestor::tr[1]').first().click({ force: true });
-        const okButton = await popup.findInAllFrames('a.button:has-text("OK"), a:has-text("OK")', 3);
-        await okButton.click({ force: true });
-      }
     }
   ];
 
@@ -142,14 +152,20 @@ async function selectResultAndWaitForOutput({
     if (popupPage.isClosed()) break;
 
     await attempt.action().catch(() => {});
-    await popupPage.waitForEvent('close', { timeout: 1000 }).catch(() => {});
 
-    if (await waitForOutputValue(sourcePage, outputSelector, expectedValue, 1500)) {
+    if (
+      await waitForOutputValue(
+        sourcePage,
+        outputSelector,
+        expectedValue,
+        selectionAttemptTimeout
+      )
+    ) {
       return true;
     }
   }
 
-  return waitForOutputValue(sourcePage, outputSelector, expectedValue, 5000);
+  return waitForOutputValue(sourcePage, outputSelector, expectedValue, finalOutputTimeout);
 }
 
 async function readSelectedResultValue(popup, resultColumn, selectors) {

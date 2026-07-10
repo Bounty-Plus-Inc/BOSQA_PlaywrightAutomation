@@ -151,12 +151,6 @@ export function createPlaywrightRunnerApi() {
           ? selectedTest?.actions?.find((action) => action.id === actionId)
           : null;
         const documentNumber = String(payload.documentNumber || '').trim();
-        const documentRunMode = String(
-          payload.documentRunMode || selectedTest?.documentRunModes?.[0]?.id || ''
-        ).trim();
-        const selectedDocumentRunMode = documentRunMode
-          ? selectedTest?.documentRunModes?.find((mode) => mode.id === documentRunMode)
-          : null;
         const dataInputs = payload.dataInputs && typeof payload.dataInputs === 'object'
           ? payload.dataInputs
           : {};
@@ -178,11 +172,6 @@ export function createPlaywrightRunnerApi() {
 
         if (selectedTest.documentNumberInput && !documentNumber) {
           sendJson(res, 400, { error: 'Document number is required' });
-          return;
-        }
-
-        if (selectedTest.documentRunModes?.length && !selectedDocumentRunMode) {
-          sendJson(res, 400, { error: 'Unknown Find Document action selected' });
           return;
         }
 
@@ -229,8 +218,7 @@ export function createPlaywrightRunnerApi() {
             ...itemCountEnv,
             BPI_TEST_ACTION_ID: actionId,
             BPI_TEST_ACTION_LABEL: selectedAction?.label || '',
-            BPI_FIND_DOCUMENT_NO: documentNumber,
-            BPI_FIND_DOCUMENT_MODE: documentRunMode
+            BPI_FIND_DOCUMENT_NO: documentNumber
           },
           shell: true,
           stdio: ['ignore', 'pipe', 'pipe']
@@ -260,7 +248,6 @@ export function createPlaywrightRunnerApi() {
             itemCount,
             actionId,
             documentNumber,
-            documentRunMode,
             exitCode,
             output
           };

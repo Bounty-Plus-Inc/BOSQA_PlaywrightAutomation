@@ -170,7 +170,6 @@ export default function App() {
   const [activeResultSourceTest, setActiveResultSourceTest] = useState(null);
   const [itemCount, setItemCount] = useState(1);
   const [documentNumbers, setDocumentNumbers] = useState({});
-  const [documentRunModes, setDocumentRunModes] = useState({});
   const [testInputValues, setTestInputValues] = useState({});
   const [scaffoldValues, setScaffoldValues] = useState({
     moduleName: '',
@@ -250,7 +249,6 @@ export default function App() {
 
   const validateRunSelection = (test, action = null) => {
     const documentNumber = (documentNumbers[test.id] || '').trim();
-    const documentRunMode = documentRunModes[test.id] || test.documentRunModes?.[0]?.id || '';
     const runLabel = action ? `${test.label}: ${action.label}` : test.label;
     const cardInputs = (test.cards || []).flatMap((card) => card.fields || []);
     const testInputs = [
@@ -275,11 +273,6 @@ export default function App() {
 
     if (test.actions?.length && !action) {
       showToast(`Select a document before starting ${test.label}.`);
-      return false;
-    }
-
-    if (test.documentRunModes?.length && !documentRunMode) {
-      showToast(`Select an action before starting ${runLabel}.`);
       return false;
     }
 
@@ -308,8 +301,6 @@ export default function App() {
 
     const runLabel = selectedAction ? `${selectedTest.label}: ${selectedAction.label}` : selectedTest.label;
     const documentNumber = (documentNumbers[selectedTest.id] || '').trim();
-    const documentRunMode =
-      documentRunModes[selectedTest.id] || selectedTest.documentRunModes?.[0]?.id || '';
     const dataInputs = testInputValues[selectedTest.id] || {};
     if (selectedTest.documentNumberInput && !documentNumber) {
       setRunStatus(`Enter a document number before starting ${runLabel}.`);
@@ -318,11 +309,6 @@ export default function App() {
 
     if (selectedTest.actions?.length && !selectedAction) {
       setRunStatus(`Select a document before starting ${selectedTest.label}.`);
-      return;
-    }
-
-    if (selectedTest.documentRunModes?.length && !documentRunMode) {
-      setRunStatus(`Select an action before starting ${runLabel}.`);
       return;
     }
 
@@ -338,7 +324,6 @@ export default function App() {
           itemCount,
           actionId: selectedAction?.id || '',
           documentNumber,
-          documentRunMode,
           dataInputs
         })
       });
@@ -643,7 +628,6 @@ export default function App() {
     if (
       !test?.actions?.length &&
       !test?.documentNumberInput &&
-      !test?.documentRunModes?.length &&
       !dataInputs.length
     ) {
       return null;
@@ -708,25 +692,6 @@ export default function App() {
             ))}
           </select>
         )}
-        {!!test.documentRunModes?.length && (
-          <select
-            className="document-run-mode-select"
-            value={documentRunModes[test.id] || test.documentRunModes[0]?.id || ''}
-            aria-label={`${test.label} action selection`}
-            onChange={(event) =>
-              setDocumentRunModes((current) => ({
-                ...current,
-                [test.id]: event.target.value
-              }))
-            }
-          >
-            {test.documentRunModes.map((mode) => (
-              <option value={mode.id} key={`${test.id}-${mode.id}`}>
-                {mode.label}
-              </option>
-            ))}
-          </select>
-        )}
       </div>
     );
   };
@@ -756,25 +721,6 @@ export default function App() {
                   }))
                 }
               />
-              {!!utility.documentRunModes?.length && (
-                <select
-                  className="document-run-mode-select"
-                  value={documentRunModes[utility.id] || utility.documentRunModes[0]?.id || ''}
-                  aria-label={`${utility.label} action selection`}
-                  onChange={(event) =>
-                    setDocumentRunModes((current) => ({
-                      ...current,
-                      [utility.id]: event.target.value
-                    }))
-                  }
-                >
-                  {utility.documentRunModes.map((mode) => (
-                    <option value={mode.id} key={`${utility.id}-${mode.id}`}>
-                      {mode.label}
-                    </option>
-                  ))}
-                </select>
-              )}
               {!isRunInProgress && (
                 <button
                   type="button"
@@ -782,7 +728,7 @@ export default function App() {
                   aria-label={`Run ${utility.utilityLabel} ${utility.label}`}
                 >
                   <Icon name="play" />
-                  <span>Execute Document</span>
+                  <span>EXECUTE DOCUMENT</span>
                 </button>
               )}
             </div>

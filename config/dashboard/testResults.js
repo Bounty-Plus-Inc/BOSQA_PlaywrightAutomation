@@ -541,16 +541,6 @@ export const testResults = {
       moduleId: action.moduleId,
       testResultId: action.testResultId,
     })),
-    documentRunModes: [
-      {
-        id: "display",
-        label: "Display",
-      },
-      {
-        id: "replicate",
-        label: "Replicate",
-      },
-    ],
     steps: getFindDocumentSteps(),
   },
 };

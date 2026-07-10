@@ -10,13 +10,15 @@ const { BasePage } = require('../pages/base/BasePage');
 const ATTACHMENT_FOLDER = path.resolve(__dirname, 'forattachmentpurposes');
 
 const DEFAULT_ATTACHMENT_SELECTORS = {
-  triggerField: 'xpath=//*[@id="df_docno"]',
+  triggerField: '',
+  contextSurface: 'body',
   popupTable: 'xpath=//*[@id="popupTable"]/table',
-  attachmentMenu: 'xpath=//*[@id="popupTable"]/table/tbody/tr[7]/td/a',
+  attachmentMenu: 'xpath=//a[contains(@onclick,"popupFrameAttachments")]',
   attachmentsFrame: 'xpath=//*[@id="divpopupFrameAttachments"]',
   updateButton: 'xpath=//*[@id="T50_btnUpdate"]',
   fileUploadFrame: 'xpath=//*[@id="divpopupFrameFileUpload"]',
-  fileInput: 'xpath=//*[@id="df_filename"]'
+  fileInput: 'xpath=//*[@id="df_filename"]',
+  uploadButton: 'xpath=/html/body/form/table/tbody/tr/td[2]/table/tbody/tr/td[1]/table/tbody/tr[3]/td/a[1]'
 };
 
 function normalizeText(value) {
@@ -69,6 +71,127 @@ function createAttachmentFile({ moduleName, docNo }) {
   };
 }
 
+function deletePreviousAttachmentFiles(currentFilePath) {
+  const currentPath = path.resolve(currentFilePath);
+
+  return fs
+    .readdirSync(ATTACHMENT_FOLDER, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        /^Attachment.*\.txt$/i.test(entry.name) &&
+        path.resolve(ATTACHMENT_FOLDER, entry.name) !== currentPath
+    )
+    .map((entry) => {
+      fs.unlinkSync(path.join(ATTACHMENT_FOLDER, entry.name));
+      return entry.name;
+    });
+}
+
+async function findFrameContainingSelector(page, selector) {
+  const matchingFrames = [];
+
+  for (const frame of page.frames()) {
+    try {
+      if (frame.isDetached()) continue;
+      if ((await frame.locator(selector).count()) > 0) matchingFrames.push(frame);
+    } catch (e) {
+      continue;
+    }
+  }
+
+  matchingFrames.sort((left, right) => {
+    const score = (frame) => {
+      if (frame.name() === 'iframeBody') return 2;
+      if (frame !== page.mainFrame()) return 1;
+      return 0;
+    };
+    return score(right) - score(left);
+  });
+
+  if (matchingFrames.length) return matchingFrames[0];
+
+  throw new Error(`Attachment context frame was not found for: ${selector}`);
+}
+
+async function rightClickAttachmentContextArea(basePage, selectors) {
+  if (String(selectors.triggerField || '').trim()) {
+    const triggerField = await basePage.findVisibleInAllFrames(selectors.triggerField, 20);
+    await triggerField.click({ button: 'right' });
+    return;
+  }
+
+  const contextFrame = await findFrameContainingSelector(
+    basePage.page,
+    selectors.popupTable
+  );
+  const contextSurface = contextFrame.locator(selectors.contextSurface || 'body').first();
+  await expect(contextSurface).toBeVisible({ timeout: 10000 });
+
+  const blankPoint = await contextSurface.evaluate((surface) => {
+    const rect = surface.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+
+    const interactiveSelector = [
+      'a',
+      'button',
+      'input',
+      'select',
+      'textarea',
+      'img',
+      'label',
+      'iframe',
+      '[onclick]',
+      '[ondblclick]',
+      '[onmousedown]',
+      '[onmouseup]',
+      '[role="button"]',
+      '[contenteditable="true"]'
+    ].join(',');
+    const xRatios = [0.75, 0.6, 0.45, 0.3, 0.85, 0.15];
+    const yRatios = [0.55, 0.65, 0.45, 0.75, 0.35, 0.25, 0.85];
+
+    for (const yRatio of yRatios) {
+      for (const xRatio of xRatios) {
+        const x = rect.left + rect.width * xRatio;
+        const y = rect.top + rect.height * yRatio;
+        const target = document.elementFromPoint(x, y);
+        if (!target || !surface.contains(target)) continue;
+
+        let node = target;
+        let isInteractive = false;
+        while (node && node !== surface) {
+          if (node.matches?.(interactiveSelector)) {
+            isInteractive = true;
+            break;
+          }
+          node = node.parentElement;
+        }
+        if (isInteractive) continue;
+
+        return {
+          x: Math.round(x - rect.left),
+          y: Math.round(y - rect.top)
+        };
+      }
+    }
+
+    return null;
+  });
+
+  if (!blankPoint) {
+    throw new Error(
+      `No safe blank area was found inside the attachment context surface: ` +
+        `${selectors.contextSurface || 'body'}`
+    );
+  }
+
+  await contextSurface.click({
+    button: 'right',
+    position: blankPoint
+  });
+}
+
 async function uploadPopupAttachment(pageOrPageObject, options = {}) {
   const basePage = toBasePage(pageOrPageObject);
   const selectors = {
@@ -76,22 +199,21 @@ async function uploadPopupAttachment(pageOrPageObject, options = {}) {
     ...(options.selectors || {})
   };
 
-  const triggerField = await basePage.findInAllFrames(selectors.triggerField, 20);
-  await triggerField.click({ force: true });
+  await rightClickAttachmentContextArea(basePage, selectors);
 
-  const popupTable = await basePage.findInAllFrames(selectors.popupTable, 20);
+  const popupTable = await basePage.findVisibleInAllFrames(selectors.popupTable, 20);
   await expect(popupTable).toBeVisible({ timeout: 10000 });
 
-  const attachmentMenu = await basePage.findInAllFrames(selectors.attachmentMenu, 20);
+  const attachmentMenu = await basePage.findVisibleInAllFrames(selectors.attachmentMenu, 20);
   await attachmentMenu.click();
 
-  const attachmentsFrame = await basePage.findInAllFrames(selectors.attachmentsFrame, 20);
+  const attachmentsFrame = await basePage.findVisibleInAllFrames(selectors.attachmentsFrame, 20);
   await expect(attachmentsFrame).toBeVisible({ timeout: 10000 });
 
-  const updateButton = await basePage.findInAllFrames(selectors.updateButton, 20);
+  const updateButton = await basePage.findVisibleInAllFrames(selectors.updateButton, 20);
   await updateButton.click();
 
-  const fileUploadFrame = await basePage.findInAllFrames(selectors.fileUploadFrame, 20);
+  const fileUploadFrame = await basePage.findVisibleInAllFrames(selectors.fileUploadFrame, 20);
   await expect(fileUploadFrame).toBeVisible({ timeout: 10000 });
 
   const fileInput = await basePage.findInAllFrames(selectors.fileInput, 20);
@@ -111,8 +233,14 @@ async function uploadPopupAttachment(pageOrPageObject, options = {}) {
     await fileInput.setInputFiles(attachment.filePath);
   }
 
+  const uploadButton = await basePage.findVisibleInAllFrames(selectors.uploadButton, 20);
+  await uploadButton.click();
+  await basePage.page.waitForTimeout(1000);
+  const deletedPreviousFiles = deletePreviousAttachmentFiles(attachment.filePath);
+
   return {
     ...attachment,
+    deletedPreviousFiles,
     expectedValue: attachment.fileName,
     actualValue: path.basename(attachment.filePath),
     passed: true
@@ -122,6 +250,8 @@ async function uploadPopupAttachment(pageOrPageObject, options = {}) {
 module.exports = {
   ATTACHMENT_FOLDER,
   createAttachmentFile,
+  deletePreviousAttachmentFiles,
   DEFAULT_ATTACHMENT_SELECTORS,
+  rightClickAttachmentContextArea,
   uploadPopupAttachment
 };
