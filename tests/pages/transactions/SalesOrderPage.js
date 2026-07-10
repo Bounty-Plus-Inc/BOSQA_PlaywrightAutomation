@@ -420,7 +420,7 @@ class SalesOrderPage extends BasePage {
   async saveAsDraft() {
     await (await this.findVisibleInAllFrames('#tab1nav1', 20)).click();
     await this.page.waitForTimeout(300);
-    await this.withDialogCapture(
+    const actionResult = await this.withDialogCapture(
       async () => {
         await (await this.findVisibleInAllFrames('#btnSaveAsDraft', 20)).click();
         return true;
@@ -428,14 +428,30 @@ class SalesOrderPage extends BasePage {
       { settleAfterDialog: false }
     );
 
-    await this.acceptCreditLimitBalancePopupIfVisible();
-    await this.waitForOperationSuccess();
+    const popupMessage = await this.acceptCreditLimitBalancePopupIfVisible();
+    const draftMessage = await this.waitForDraftSaveOutcome([
+      ...actionResult.dialogMessages,
+      popupMessage
+    ]);
+    if (this.isPostingDateOrDueDateInvalid(draftMessage)) {
+      return {
+        isDraft: false,
+        statusMsg: draftMessage,
+        isPostingDateOrDueDateInvalid: true
+      };
+    }
 
     await expect
       .poll(async () => this.readStatus(), { timeout: 15000 })
       .toContain('D|Draft');
 
     await this.waitForDraftPageReady();
+
+    return {
+      isDraft: true,
+      statusMsg: draftMessage,
+      isPostingDateOrDueDateInvalid: false
+    };
   }
 
   async addOrUpdateUntilOpen() {
@@ -450,12 +466,23 @@ class SalesOrderPage extends BasePage {
       ...actionResult.dialogMessages,
       popupMessage
     ]);
+    if (this.isPostingDateOrDueDateInvalid(statusMsg)) {
+      return {
+        isOpen: false,
+        statusMsg,
+        isCreditLimitBlocked: false,
+        isProcessEndedSuccessfully: false,
+        isPostingDateOrDueDateInvalid: true
+      };
+    }
+
     if (this.isCreditLimitBlocked(statusMsg)) {
       return {
         isOpen: false,
         statusMsg,
         isCreditLimitBlocked: true,
-        isProcessEndedSuccessfully: false
+        isProcessEndedSuccessfully: false,
+        isPostingDateOrDueDateInvalid: false
       };
     }
 
@@ -469,13 +496,24 @@ class SalesOrderPage extends BasePage {
       ...actionResult.dialogMessages,
       popupMessage
     ]);
+    if (this.isPostingDateOrDueDateInvalid(statusMsg)) {
+      return {
+        isOpen: false,
+        statusMsg,
+        isCreditLimitBlocked: false,
+        isProcessEndedSuccessfully: false,
+        isPostingDateOrDueDateInvalid: true
+      };
+    }
+
     const isPendingApproval = await this.isPendingForApproval().catch(() => false);
     if (!openStatusResult && isPendingApproval && this.isProcessEndedSuccessfully(statusMsg)) {
       return {
         isOpen: false,
         statusMsg,
         isCreditLimitBlocked: false,
-        isProcessEndedSuccessfully: true
+        isProcessEndedSuccessfully: true,
+        isPostingDateOrDueDateInvalid: false
       };
     }
 
@@ -484,7 +522,8 @@ class SalesOrderPage extends BasePage {
         isOpen: false,
         statusMsg,
         isCreditLimitBlocked: true,
-        isProcessEndedSuccessfully: false
+        isProcessEndedSuccessfully: false,
+        isPostingDateOrDueDateInvalid: false
       };
     }
 
@@ -493,7 +532,8 @@ class SalesOrderPage extends BasePage {
         isOpen: false,
         statusMsg,
         isCreditLimitBlocked: false,
-        isProcessEndedSuccessfully: true
+        isProcessEndedSuccessfully: true,
+        isPostingDateOrDueDateInvalid: false
       };
     }
 
@@ -503,7 +543,8 @@ class SalesOrderPage extends BasePage {
         isOpen: false,
         statusMsg: statusMsg || 'Document remained Draft after Add; treating as credit limit validation.',
         isCreditLimitBlocked: true,
-        isProcessEndedSuccessfully: false
+        isProcessEndedSuccessfully: false,
+        isPostingDateOrDueDateInvalid: false
       };
     }
 
@@ -517,12 +558,23 @@ class SalesOrderPage extends BasePage {
       );
       if (alternateResult.result) {
         statusMsg = await this.readSubmitMessage(alternateResult.dialogMessages);
+        if (this.isPostingDateOrDueDateInvalid(statusMsg)) {
+          return {
+            isOpen: false,
+            statusMsg,
+            isCreditLimitBlocked: false,
+            isProcessEndedSuccessfully: false,
+            isPostingDateOrDueDateInvalid: true
+          };
+        }
+
         if (this.isCreditLimitBlocked(statusMsg)) {
           return {
             isOpen: false,
             statusMsg,
             isCreditLimitBlocked: true,
-            isProcessEndedSuccessfully: false
+            isProcessEndedSuccessfully: false,
+            isPostingDateOrDueDateInvalid: false
           };
         }
 
@@ -531,7 +583,8 @@ class SalesOrderPage extends BasePage {
             isOpen: false,
             statusMsg,
             isCreditLimitBlocked: false,
-            isProcessEndedSuccessfully: true
+            isProcessEndedSuccessfully: true,
+            isPostingDateOrDueDateInvalid: false
           };
         }
 
@@ -541,12 +594,23 @@ class SalesOrderPage extends BasePage {
           .then(() => true)
           .catch(() => false);
         statusMsg = await this.readAddOrUpdateMessage(alternateResult.dialogMessages);
+        if (this.isPostingDateOrDueDateInvalid(statusMsg)) {
+          return {
+            isOpen: false,
+            statusMsg,
+            isCreditLimitBlocked: false,
+            isProcessEndedSuccessfully: false,
+            isPostingDateOrDueDateInvalid: true
+          };
+        }
+
         if (this.isCreditLimitBlocked(statusMsg)) {
           return {
             isOpen: false,
             statusMsg,
             isCreditLimitBlocked: true,
-            isProcessEndedSuccessfully: false
+            isProcessEndedSuccessfully: false,
+            isPostingDateOrDueDateInvalid: false
           };
         }
 
@@ -555,13 +619,24 @@ class SalesOrderPage extends BasePage {
             isOpen: false,
             statusMsg,
             isCreditLimitBlocked: false,
-            isProcessEndedSuccessfully: true
+            isProcessEndedSuccessfully: true,
+            isPostingDateOrDueDateInvalid: false
           };
         }
       }
     }
 
     statusMsg = await this.readAddOrUpdateMessage();
+    if (this.isPostingDateOrDueDateInvalid(statusMsg)) {
+      return {
+        isOpen: false,
+        statusMsg,
+        isCreditLimitBlocked: false,
+        isProcessEndedSuccessfully: false,
+        isPostingDateOrDueDateInvalid: true
+      };
+    }
+
     const isCreditLimitBlocked = this.isCreditLimitBlocked(statusMsg);
     const hasPendingApproval = await this.isPendingForApproval().catch(() => false);
     if (!openStatusResult && hasPendingApproval && this.isProcessEndedSuccessfully(statusMsg)) {
@@ -569,7 +644,8 @@ class SalesOrderPage extends BasePage {
         isOpen: false,
         statusMsg,
         isCreditLimitBlocked: false,
-        isProcessEndedSuccessfully: true
+        isProcessEndedSuccessfully: true,
+        isPostingDateOrDueDateInvalid: false
       };
     }
 
@@ -580,7 +656,8 @@ class SalesOrderPage extends BasePage {
         isCreditLimitBlocked ||
         (!openStatusResult && actionButtonUsed === 'btnAdd' && !hasPendingApproval),
       isProcessEndedSuccessfully:
-        !openStatusResult && !isCreditLimitBlocked && this.isProcessEndedSuccessfully(statusMsg)
+        !openStatusResult && !isCreditLimitBlocked && this.isProcessEndedSuccessfully(statusMsg),
+      isPostingDateOrDueDateInvalid: false
     };
   }
 
@@ -624,6 +701,70 @@ class SalesOrderPage extends BasePage {
         }
       )
       .toMatch(/operation\s+ended\s+successfully/i);
+  }
+
+  async waitForDraftSaveOutcome(extraMessages = []) {
+    const immediateMessage = await this.readDraftSaveMessage(extraMessages);
+    if (this.isPostingDateOrDueDateInvalid(immediateMessage)) {
+      return immediateMessage;
+    }
+
+    const successMessage = await expect
+      .poll(
+        async () => {
+          const message = await this.readDraftSaveMessage(extraMessages).catch(() => '');
+          if (this.isPostingDateOrDueDateInvalid(message)) return message;
+          if (this.isProcessEndedSuccessfully(message)) return message;
+          return '';
+        },
+        {
+          timeout: 15000,
+          message: 'Draft save success or posting-date validation message should appear before continuing.'
+        }
+      )
+      .not.toBe('')
+      .then(() => this.readDraftSaveMessage(extraMessages))
+      .catch(() => immediateMessage);
+
+    if (this.isPostingDateOrDueDateInvalid(successMessage)) {
+      return successMessage;
+    }
+
+    const delayedValidationMessage = await this.waitForPostingDateValidationMessage({
+      timeout: 2500
+    });
+    return delayedValidationMessage || successMessage;
+  }
+
+  async waitForPostingDateValidationMessage({ timeout = 2500 } = {}) {
+    return expect
+      .poll(
+        async () => {
+          const message = await this.readDraftSaveMessage().catch(() => '');
+          if (this.isPostingDateOrDueDateInvalid(message)) {
+            return message;
+          }
+          return '';
+        },
+        {
+          timeout,
+          intervals: [100, 150, 250, 500],
+          message: 'Posting-date validation should be detected before continuing after draft save.'
+        }
+      )
+      .not.toBe('')
+      .then(() => this.readDraftSaveMessage())
+      .catch(() => '');
+  }
+
+  async readDraftSaveMessage(extraMessages = []) {
+    const pageMessage = await this.readAddOrUpdateMessage().catch(() => '');
+    if (this.isPostingDateOrDueDateInvalid(pageMessage)) return pageMessage;
+
+    const joinedExtraMessages = extraMessages.filter(Boolean).join(' | ').trim();
+    if (this.isPostingDateOrDueDateInvalid(joinedExtraMessages)) return joinedExtraMessages;
+
+    return pageMessage || joinedExtraMessages;
   }
 
   async withDialogCapture(action, options = {}) {
@@ -723,7 +864,11 @@ class SalesOrderPage extends BasePage {
 
   async waitForAddOrUpdateMessage(extraMessages = []) {
     const immediateMessage = await this.readAddOrUpdateMessage(extraMessages);
-    if (this.isCreditLimitBlocked(immediateMessage) || this.isProcessEndedSuccessfully(immediateMessage)) {
+    if (
+      this.isCreditLimitBlocked(immediateMessage) ||
+      this.isProcessEndedSuccessfully(immediateMessage) ||
+      this.isPostingDateOrDueDateInvalid(immediateMessage)
+    ) {
       return immediateMessage;
     }
 
@@ -731,7 +876,11 @@ class SalesOrderPage extends BasePage {
       .poll(
         async () => {
           const message = await this.readAddOrUpdateMessage(extraMessages).catch(() => '');
-          if (this.isCreditLimitBlocked(message) || this.isProcessEndedSuccessfully(message)) {
+          if (
+            this.isCreditLimitBlocked(message) ||
+            this.isProcessEndedSuccessfully(message) ||
+            this.isPostingDateOrDueDateInvalid(message)
+          ) {
             return message;
           }
           return '';
@@ -748,6 +897,7 @@ class SalesOrderPage extends BasePage {
     if (joinedExtraMessages) return joinedExtraMessages;
 
     const selectors = [
+      '#statusMsgColumn',
       'label#statusMsg',
       '#statusMsg',
       '[id*="statusMsg"]',
@@ -757,7 +907,15 @@ class SalesOrderPage extends BasePage {
 
     for (const selector of selectors) {
       const statusMsgEl = await this.findInAllFrames(selector, 4).catch(() => null);
-      const statusMsg = statusMsgEl ? ((await statusMsgEl.textContent()) || '').trim() : '';
+      const statusMsg = statusMsgEl
+        ? await statusMsgEl
+          .evaluate((element) => {
+            if ('value' in element) return element.value;
+            return element.innerText || element.textContent || '';
+          })
+          .then((value) => String(value || '').trim())
+          .catch(() => '')
+        : '';
       if (statusMsg) return statusMsg;
     }
 
@@ -770,6 +928,7 @@ class SalesOrderPage extends BasePage {
         if (frame.isDetached()) continue;
         const diagnostics = await frame.evaluate(() => {
           const selectors = [
+            '#statusMsgColumn',
             '#raiseerror',
             '[id*="raise" i]',
             '[class*="raise" i]',
@@ -796,18 +955,18 @@ class SalesOrderPage extends BasePage {
               };
             });
 
-          const creditText = (document.body.innerText || '')
+          const validationText = (document.body.innerText || '')
             .split(/\n+/)
             .map((line) => line.trim())
             .filter((line) =>
-              /insufficient\s+credit\s+limit\s+balance|invalid action.*credit\s+limit|credit\s+limit.*invalid action|for checking.*credit\s+limit|credit\s+limit.*for checking|raiseerror/i.test(line)
+              /insufficient\s+credit\s+limit\s+balance|invalid action.*credit\s+limit|credit\s+limit.*invalid action|for checking.*credit\s+limit|credit\s+limit.*for checking|ispostingdatevalid|invalid\s+due\s+date|posting\s+period|raiseerror/i.test(line)
             )
             .join(' | ');
 
-          return { matches, creditText };
+          return { matches, validationText };
         });
 
-        if (diagnostics.creditText) return diagnostics.creditText;
+        if (diagnostics.validationText) return diagnostics.validationText;
 
         const visibleRaiseError = diagnostics.matches.find(
           (match) =>
@@ -878,6 +1037,11 @@ class SalesOrderPage extends BasePage {
 
   isCreditLimitBalanceMessage(statusMsg) {
     return /insufficient\s+credit\s+limit\s+balance/i.test(statusMsg || '');
+  }
+
+  isPostingDateOrDueDateInvalid(statusMsg) {
+    return /ispostingdatevalid/i.test(statusMsg || '') ||
+      (/invalid\s+due\s+date/i.test(statusMsg || '') && /period/i.test(statusMsg || ''));
   }
 
   isDraftStatus(status) {
