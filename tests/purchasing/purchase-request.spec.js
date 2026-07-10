@@ -132,68 +132,82 @@ test("Purchase Request", async ({ page }) => {
     await takeStepScreenshot(page, testName, "09_REMARKS_ENTERED");
   });
 
+
+    await test.step("Accounting Tab", async () => {
+    await transactionPage.openAccountingTab();
+
+    await takeStepScreenshot(page, testName, "10_ACCOUNTING_TAB_OPENED");
+
+    await transactionPage.selectPaymentTerm();
+
+    await takeStepScreenshot(page, testName, "11_PAYMENT_SELECTED");
+
+    await page.waitForTimeout(3000);
+  });
+
+
   await test.step("General Tab", async () => {
     await transactionPage.openGeneralTab();
 
-    await takeStepScreenshot(page, testName, "10_GENERAL_TAB_OPENED");
+    await takeStepScreenshot(page, testName, "12_GENERAL_TAB_OPENED");
 
     await transactionPage.selectBuyer(purchaseRequest.buyer, {
       beforeSelect: async (buyerCFLPage) => {
-        await takeStepScreenshot(buyerCFLPage, testName, "11_BUYER_CFL_POPUP");
+        await takeStepScreenshot(buyerCFLPage, testName, "13_BUYER_CFL_POPUP");
       },
     });
 
-    await takeStepScreenshot(page, testName, "12_BUYER_SELECTED");
+    await takeStepScreenshot(page, testName, "14_BUYER_SELECTED");
 
     await transactionPage.selectApprovalMatrix({
       beforeSelect: async (approvalCFLPage) => {
         await takeStepScreenshot(
           approvalCFLPage,
           testName,
-          "13_APPROVAL_MATRIX_CFL_POPUP",
+          "15_APPROVAL_MATRIX_CFL_POPUP",
         );
       },
     });
     await page.waitForTimeout(3000);
-    await takeStepScreenshot(page, testName, "14_APPROVAL_MATRIX_SELECTED");
+    await takeStepScreenshot(page, testName, "16_APPROVAL_MATRIX_SELECTED");
   });
 
   await test.step("Save Purchase Request as Draft", async () => {
     await transactionPage.saveAsDraft();
     await page.waitForTimeout(3000);
-    await takeStepScreenshot(page, testName, "15_DOCUMENT_SAVED_AS_DRAFT");
+    await takeStepScreenshot(page, testName, "17_DOCUMENT_SAVED_AS_DRAFT");
   });
 
-await test.step("Add Purchase Request", async () => {
-  await transactionPage.clickAdd();
 
-  const attachmentRequired =
-    await transactionPage.isAttachmentRequired();
-
-  console.log("Attachment Required:", attachmentRequired);
-
-  if (attachmentRequired) {
-    await attachmentPage.openAttachmentWindow();
-
-    await attachmentPage.uploadAttachment(
-      purchaseRequest.attachmentFile
-    );
-
-    await takeStepScreenshot(
-      page,
-      testName,
-      "16_ATTACHMENT_UPLOADED"
-    );
-
+  await test.step("Add Purchase Request", async () => {
     await transactionPage.clickAdd();
 
-    await takeStepScreenshot(
-      page,
-      testName,
-      "17_DOCUMENT_ADDED"
-    );
-  }
-});
+    const attachmentRequired =
+      await transactionPage.isAttachmentRequired();
+
+
+    if (attachmentRequired) {
+      await attachmentPage.openAttachmentWindow();
+
+      await attachmentPage.uploadAttachment(
+        purchaseRequest.attachmentFile
+      );
+
+      await takeStepScreenshot(
+        page,
+        testName,
+        "18_ATTACHMENT_UPLOADED"
+      );
+
+      await transactionPage.clickAdd();
+
+      await takeStepScreenshot(
+        page,
+        testName,
+        "19_DOCUMENT_ADDED"
+      );
+    }
+  });
   const memory = await transactionPage.readDocumentMemory();
 
   recordModuleDocNo(
@@ -203,23 +217,27 @@ await test.step("Add Purchase Request", async () => {
     testId,
   );
 
-  await test.step("Approve Purchase Request", async () => {
-    await transactionApprovalMenu.open();
+await test.step("Approve Purchase Request", async () => {
+  await transactionApprovalMenu.open();
 
-    await transactionApproval.expectLoaded();
+  await transactionApproval.expectLoaded();
 
-    await transactionApproval.approveDocument(async () => {
-      await takeStepScreenshot(
-        page,
-        testName,
-        "18_TRANSACTION_APPROVAL_OPENED",
-      );
-    });
+  console.time("Approve Document");
 
-    recordModuleDocNo("Transaction Approval", memory.docNo, "Approved", testId);
-
-    await takeStepScreenshot(page, testName, "19_PURCHASE_REQUEST_APPROVED");
+  await transactionApproval.approveDocument(async () => {
+    await takeStepScreenshot(
+      page,
+      testName,
+      "20_TRANSACTION_APPROVAL_OPENED",
+    );
   });
+
+  console.timeEnd("Approve Document");
+
+  recordModuleDocNo("Transaction Approval", memory.docNo, "Approved", testId);
+
+  await takeStepScreenshot(page, testName, "21_PURCHASE_REQUEST_APPROVED");
+});
 
   finishRunSummary("success", testId);
 });
