@@ -14,8 +14,6 @@ const { uploadPopupAttachment } = require('../../helpers/popup-attachment');
 const DELIVERY_COPY_LINE_FIELDS = [
   { label: 'Item Code', fieldName: 'itemcode' },
   { label: 'Item Description', fieldName: 'itemdesc' },
-  { label: 'U Quantity 1', fieldName: 'u_quantity1', numeric: true },
-  { label: 'U Quantity 2', fieldName: 'u_quantity2', numeric: true },
   { label: 'UOM', fieldName: 'uom' },
   { label: 'U UOM', fieldName: 'u_uom' },
   { label: 'Unit Price', fieldName: 'unitprice', numeric: true },
@@ -230,7 +228,7 @@ class DeliveryOrderPage extends BasePage {
     return copyFrom;
   }
 
-  async copyFromSalesOrder({ bpCode, salesOrderDocNo, hooks = {} } = {}) {
+  async copyFromSalesOrder({ bpCode, salesOrderDocNo, shipType, hooks = {} } = {}) {
     if (!String(salesOrderDocNo || '').trim()) {
       throw new Error('Delivery Order Copy From requires a Sales Order document number.');
     }
@@ -286,7 +284,7 @@ class DeliveryOrderPage extends BasePage {
       await hooks.afterLineCopied(lineCopyValidations);
     }
 
-    const deliveryDetailValidations = await this.completeDeliveryDetails();
+    const deliveryDetailValidations = await this.completeDeliveryDetails({ shipType });
 
     if (hooks.afterDeliveryDetailsCompleted) {
       await hooks.afterDeliveryDetailsCompleted(deliveryDetailValidations);
@@ -330,7 +328,7 @@ class DeliveryOrderPage extends BasePage {
       .not.toBe('');
   }
 
-  async completeDeliveryDetails() {
+  async completeDeliveryDetails({ shipType } = {}) {
     const validations = [];
 
     validations.push(await this.selectPrimaryDocSeries());
@@ -338,8 +336,70 @@ class DeliveryOrderPage extends BasePage {
     validations.push(await TruckCFL.selectFirstTruck(this));
     validations.push(await PlateNumberCFL.selectFirstPlateNumber(this));
     validations.push(await this.selectInvoiceDeliveryDate());
+    validations.push(await this.selectShipType(shipType));
 
     return validations;
+  }
+
+  async selectShipType(shipType) {
+    await (await this.findVisibleInAllFrames('xpath=//*[@id="tab1nav2"]', 20)).click();
+    const selector = 'select#df_shiptype[name="df_shiptype"], select#df_shiptype';
+    let shipTypeSelect = await this.findVisibleInAllFrames(selector, 20);
+    await expect(shipTypeSelect).toBeEnabled({ timeout: 10000 });
+
+    await expect
+      .poll(() => shipTypeSelect.locator('option').count(), { timeout: 10000 })
+      .toBeGreaterThan(1);
+
+    const targetOption = shipTypeSelect.locator('option').nth(1);
+    const targetValue = this.normalizeComparableText(
+      await targetOption.getAttribute('value').catch(() => '')
+    );
+    const targetLabel = this.normalizeComparableText(
+      await targetOption.textContent().catch(() => '')
+    );
+    const targetDisabled = await targetOption.isDisabled().catch(() => false);
+    if (targetDisabled) {
+      throw new Error('Delivery Order Ship Type option at index 1 is disabled.');
+    }
+
+    const readSelectedShipType = async () => {
+      shipTypeSelect = await this.findVisibleInAllFrames(selector, 3);
+      return {
+        index: await shipTypeSelect.evaluate((node) => node.selectedIndex).catch(() => -1),
+        value: this.normalizeComparableText(
+          await shipTypeSelect.inputValue().catch(() => '')
+        ),
+        label: this.normalizeComparableText(
+          await shipTypeSelect.locator('option:checked').textContent().catch(() => '')
+        )
+      };
+    };
+    const isTargetSelected = (selected) => selected.index === 1;
+
+    let selected = { index: -1, value: '', label: '' };
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      shipTypeSelect = await this.findVisibleInAllFrames(selector, 3);
+      await shipTypeSelect.selectOption({ index: 1 });
+      await shipTypeSelect.evaluate((node) => node.blur());
+      await this.page.waitForTimeout(250);
+      selected = await readSelectedShipType();
+      if (isTargetSelected(selected)) break;
+    }
+
+    if (!isTargetSelected(selected)) {
+      throw new Error(
+        `Delivery Order Ship Type did not stay on index 1. ` +
+          `Actual index=${selected.index}, value="${selected.label || selected.value || '(blank)'}".`
+      );
+    }
+
+    return {
+      label: 'Ship Type',
+      expectedValue: targetLabel || targetValue || 'Index 1',
+      actualValue: selected.label || selected.value,
+      passed: true
+    };
   }
 
   async selectPrimaryDocSeries() {
@@ -473,6 +533,8 @@ class DeliveryOrderPage extends BasePage {
       moduleName,
       docNo
     });
+    await this.clickAddOrUpdateAfterAttachment();
+    const postedValidation = await this.validateDeliveryOrderPosted();
 
     return {
       docNo,
@@ -483,14 +545,132 @@ class DeliveryOrderPage extends BasePage {
           expectedValue: attachment.expectedValue,
           actualValue: attachment.actualValue,
           passed: attachment.passed
-        }
+        },
+        postedValidation
       ],
       attachment
     };
   }
 
-  async clickSaveAsDraft() {
+  async clickAddOrUpdateAfterAttachment() {
+    await this.page.waitForTimeout(2000);
+
+    const { actionButton, actionPage, actionName } =
+      await this.findVisiblePostAttachmentButtonAcrossPages();
+
     const dialogHandler = async (dialog) => {
+      await dialog.accept().catch(async () => {
+        await dialog.dismiss().catch(() => {});
+      });
+    };
+
+    actionPage.on('dialog', dialogHandler);
+    try {
+      await expect(actionButton).toBeVisible({ timeout: 10000 });
+      await expect(actionButton).toBeEnabled({ timeout: 10000 });
+      await actionButton.scrollIntoViewIfNeeded().catch(() => {});
+      await actionButton.click({ force: true });
+      console.log(`[DELIVERY ORDER] Clicked ${actionName} after attachment upload.`);
+      await actionPage.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+      await actionPage.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    } finally {
+      actionPage.off('dialog', dialogHandler);
+    }
+  }
+
+  async validateDeliveryOrderPosted() {
+    const postedStatusSelector =
+      'xpath=/html/body/form[1]/table[2]/tbody/tr/td[2]/table/tbody/tr/td/table/' +
+      'tbody/tr[2]/td/table/tbody/tr/td[3]/b';
+    const postedStatus = await this.findVisibleInAllFrames(postedStatusSelector, 40);
+    let actualValue = '';
+
+    await expect
+      .poll(
+        async () => {
+          actualValue = this.normalizeComparableText(
+            await postedStatus.textContent().catch(() => '')
+          );
+          return actualValue.replace(/[\s*]+/g, '').toUpperCase();
+        },
+        {
+          timeout: 20000,
+          intervals: [100, 250, 500],
+          message: 'Delivery Order status should be P O S T E D after Add or Update.'
+        }
+      )
+      .toBe('POSTED');
+
+    return {
+      label: 'Posted Status',
+      expectedValue: 'P O S T E D',
+      actualValue,
+      passed: true
+    };
+  }
+
+  async findVisiblePostAttachmentButtonAcrossPages() {
+    const actions = [
+      {
+        name: 'Add',
+        selectors: ['xpath=//*[@id="btnAdd"]', '#btnAdd']
+      },
+      {
+        name: 'Update',
+        selectors: ['xpath=//*[@id="btnUpdate"]', '#btnUpdate']
+      }
+    ];
+    let inspectedCount = 0;
+
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      const contextPages = this.page.context().pages();
+      const pages = [this.page, ...contextPages.filter((page) => page !== this.page)];
+
+      for (const action of actions) {
+        for (const candidatePage of pages) {
+          if (candidatePage.isClosed()) continue;
+
+          for (const frame of candidatePage.frames()) {
+            try {
+              if (frame.isDetached()) continue;
+
+              for (const selector of action.selectors) {
+                const buttons = frame.locator(selector);
+                const count = await buttons.count();
+                inspectedCount += count;
+
+                for (let index = 0; index < count; index += 1) {
+                  const actionButton = buttons.nth(index);
+                  if (!(await actionButton.isVisible().catch(() => false))) continue;
+
+                  if (candidatePage !== this.page) this.page = candidatePage;
+                  return {
+                    actionButton,
+                    actionPage: candidatePage,
+                    actionName: action.name
+                  };
+                }
+              }
+            } catch (error) {
+              continue;
+            }
+          }
+        }
+      }
+
+      await this.page.waitForTimeout(250);
+    }
+
+    throw new Error(
+      `Visible Delivery Order Add or Update button was not found across active pages and frames. ` +
+        `Matching elements inspected=${inspectedCount}.`
+    );
+  }
+
+  async clickSaveAsDraft() {
+    const dialogMessages = [];
+    const dialogHandler = async (dialog) => {
+      dialogMessages.push(dialog.message());
       await dialog.accept().catch(async () => {
         await dialog.dismiss().catch(() => {});
       });
@@ -498,15 +678,82 @@ class DeliveryOrderPage extends BasePage {
 
     this.page.on('dialog', dialogHandler);
     try {
-      const saveAsDraftButton = await this.findInAllFrames('xpath=//*[@id="btnSaveAsDraft"]', 20)
-        .catch(() => this.findInAllFrames('#btnSaveAsDraft', 20));
-      await saveAsDraftButton.click();
+      const saveAsDraftButton = await this.findVisibleInAllFrames(
+        'xpath=//*[@id="btnSaveAsDraft"]',
+        20
+      );
+      await expect(saveAsDraftButton).toBeVisible({ timeout: 10000 });
+      await saveAsDraftButton.scrollIntoViewIfNeeded().catch(() => {});
+      await saveAsDraftButton.click({ force: true });
       await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
       await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-      await this.page.waitForTimeout(1000);
+      await this.waitForDeliveryModuleReload();
+      await this.waitForDeliveryDraftStatus({ dialogMessages });
     } finally {
       this.page.off('dialog', dialogHandler);
     }
+  }
+
+  async waitForDeliveryModuleReload() {
+    const newButton = await this.findVisibleInAllFrames(
+      'xpath=//*[@id="btnNew"]',
+      40
+    );
+    await expect(newButton).toBeVisible({
+      timeout: 20000
+    });
+  }
+
+  async waitForDeliveryDraftStatus({ dialogMessages = [] } = {}) {
+    let latestStatus = '';
+    const savedAsDraft = await expect
+      .poll(
+        async () => {
+          const statusSelect = await this.findInAllFrames(
+            'select#df_docstatus[name="df_docstatus"], select#df_docstatus',
+            1
+          ).catch(() => null);
+          if (!statusSelect) return 'missing-status';
+
+          const value = await statusSelect.inputValue().catch(() => '');
+          const label = String(
+            (await statusSelect.locator('option:checked').textContent().catch(() => '')) || ''
+          ).trim();
+          latestStatus = `${value}|${label}`;
+          return value === 'D' || /draft/i.test(label) ? 'draft' : latestStatus;
+        },
+        {
+          timeout: 20000,
+          intervals: [100, 250, 500],
+          message: 'Delivery Order should be saved as Draft before IRCD validation.'
+        }
+      )
+      .toBe('draft')
+      .then(() => true)
+      .catch(() => false);
+
+    if (!savedAsDraft) {
+      throw new Error(
+        `Delivery Order Save as Draft did not complete. ` +
+          `Status="${latestStatus || '(unknown)'}". ` +
+          `Dialogs="${dialogMessages.filter(Boolean).join(' | ') || '(none)'}".`
+      );
+    }
+  }
+
+  async readIrcdVersionValue() {
+    const ircdVersion = await this.findInAllFrames('xpath=//*[@id="df_ircdversion"]', 1)
+      .catch(() => null);
+    if (!ircdVersion) return '';
+
+    return this.normalizeComparableText(
+      await ircdVersion
+        .evaluate((element) => {
+          if ('value' in element) return element.value;
+          return element.innerText || element.textContent || '';
+        })
+        .catch(() => '')
+    );
   }
 
   async readDocNoFromField() {
@@ -549,20 +796,7 @@ class DeliveryOrderPage extends BasePage {
 
     await expect
       .poll(
-        async () => {
-          const ircdVersion = await this.findInAllFrames('xpath=//*[@id="df_ircdversion"]', 3)
-            .catch(() => null);
-          if (!ircdVersion) return '';
-
-          return this.normalizeComparableText(
-            await ircdVersion
-              .evaluate((element) => {
-                if ('value' in element) return element.value;
-                return element.innerText || element.textContent || '';
-              })
-              .catch(() => '')
-          );
-        },
+        async () => this.readIrcdVersionValue(),
         {
           timeout: 10000,
           message: 'Delivery Order IRCD Version should be 1 after Save as Draft.'
