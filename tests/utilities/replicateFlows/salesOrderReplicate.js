@@ -97,6 +97,7 @@ async function replicateSalesOrderTransaction({
     const copyResult = await deliveryOrder.copyFromSalesOrder({
       bpCode: memory.bpCode,
       salesOrderDocNo: sourceDocNo,
+      shipType: capturedData.shipType,
       hooks: {
         beforeSelectBp: async (bpCFLPage) => {
           await takeStepScreenshot(bpCFLPage, testName, '13_RECREATE_DELIVERY_BP_CFL_POPUP');
@@ -209,23 +210,40 @@ async function replicateSalesOrderTransaction({
     docSeriesResult.actualValue
   );
 
-  const draftOutcome = await salesOrder.saveAsDraft();
-  const draftMemory = await salesOrder.readDocumentMemory();
-  if (draftOutcome.isPostingDateOrDueDateInvalid) {
-    recordModuleDocNo(
-      'Sales Order',
-      draftMemory.docNo,
-      'Created Transaction is not valid to current posting period or Duedate',
-      testId,
-      'Check Posting Date or Due Date setup to proceed the selected transaction.'
+  const restoreHeaderAfterPostingDateValidation = async (stage) => {
+    const restoredHeaderValidations =
+      await salesOrder.restoreHeaderAfterPostingDateRecovery(capturedData);
+    for (const validation of restoredHeaderValidations) {
+      recordValidationResult(
+        testId,
+        `Sales Order Posting Date Recovery ${validation.label} (${stage})`,
+        validation.expectedValue,
+        validation.actualValue
+      );
+    }
+    await takeStepScreenshot(
+      page,
+      testName,
+      `RECREATE_POSTING_DATE_HEADER_RECOVERY_${stage.toUpperCase()}`
     );
-    return 'success';
+  };
+
+  let draftOutcome = await salesOrder.saveAsDraft();
+  if (draftOutcome.isPostingDateOrDueDateInvalid) {
+    await restoreHeaderAfterPostingDateValidation('draft');
+    draftOutcome = await salesOrder.saveAsDraft();
+    if (draftOutcome.isPostingDateOrDueDateInvalid) {
+      throw new Error(
+        'Posting Date or Due Date remained invalid after the Delivery Date adjustment, header recovery, and Save as Draft retry.'
+      );
+    }
   }
 
+  const draftMemory = await salesOrder.readDocumentMemory();
   recordModuleDocNo('Recreated Sales Order', draftMemory.docNo, 'Draft', testId);
   await takeStepScreenshot(page, testName, '06_RECREATE_STATUS_DRAFT');
 
-  const addOutcome = await salesOrder.addOrUpdateUntilOpen();
+  let addOutcome = await salesOrder.addOrUpdateUntilOpen();
   const readLatestMemory = () =>
     salesOrder.readDocumentMemory({
       fallbackBpCode: draftMemory.bpCode,
@@ -233,15 +251,13 @@ async function replicateSalesOrderTransaction({
     });
 
   if (addOutcome.isPostingDateOrDueDateInvalid) {
-    const memory = await readLatestMemory();
-    recordModuleDocNo(
-      'Sales Order',
-      memory.docNo,
-      'Created Transaction is not valid to current posting period or Duedate',
-      testId,
-      'Check Posting Date or Due Date setup to proceed the selected transaction.'
-    );
-    return 'success';
+    await restoreHeaderAfterPostingDateValidation('add');
+    addOutcome = await salesOrder.addOrUpdateUntilOpen();
+    if (addOutcome.isPostingDateOrDueDateInvalid) {
+      throw new Error(
+        'Posting Date or Due Date remained invalid after the Delivery Date adjustment, header recovery, and Add/Update retry.'
+      );
+    }
   }
 
   if (!addOutcome.isOpen) {

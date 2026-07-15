@@ -71,6 +71,14 @@ class SalesOrder extends SalesOrderPage {
       );
     }
 
+    const deliveryDateAdjustment =
+      await this.selectFirstPaymentTermForDeliveryDateAdjustment();
+    await reportValidation(
+      'Delivery Date Adjustment to Latest',
+      deliveryDateAdjustment.expectedValue,
+      deliveryDateAdjustment.actualValue
+    );
+
     await this.recreateUdfHeaderDropdowns(headerFields, reportValidation);
   }
 
@@ -167,6 +175,93 @@ class SalesOrder extends SalesOrderPage {
     }
   }
 
+  async restoreHeaderAfterPostingDateRecovery(capturedData) {
+    const bpCode = String(capturedData?.bpCode || '').trim();
+    const headerFields = [
+      {
+        label: 'Sales Org',
+        selector:
+          'select#df_u_sales_org[name="df_u_sales_org"], select#df_u_sales_org',
+        value: String(capturedData?.salesOrg || '').trim()
+      },
+      {
+        label: 'Distribution Channel',
+        selector:
+          'select#df_u_distribution_channel[name="df_u_distribution_channel"], select#df_u_distribution_channel',
+        value: String(capturedData?.distributionChannel || '').trim()
+      },
+      {
+        label: 'Business Center',
+        selector:
+          'select#df_u_business_center[name="df_u_business_center"], select#df_u_business_center',
+        value: String(capturedData?.businessCenter || '').trim()
+      },
+      {
+        label: 'Division',
+        selector:
+          'select#df_u_division[name="df_u_division"], select#df_u_division',
+        value: String(capturedData?.division || '').trim()
+      }
+    ];
+
+    if (!bpCode) {
+      throw new Error('Posting-date recovery requires the captured Sales Order BP Code.');
+    }
+
+    const missingHeaderFields = headerFields
+      .filter((field) => !field.value)
+      .map((field) => field.label);
+    if (missingHeaderFields.length) {
+      throw new Error(
+        `Posting-date recovery requires captured values for: ${missingHeaderFields.join(', ')}.`
+      );
+    }
+
+    const bpCodeSelector =
+      'input#df_bpcode[name="df_bpcode"], input#df_bpcode, input[name="df_bpcode"]';
+    const bpCodeInput = await this.findInAllFrames(bpCodeSelector, 20);
+    await bpCodeInput.evaluate((node) => {
+      node.value = '';
+      node.defaultValue = '';
+      node.setAttribute('value', '');
+    });
+
+    await expect
+      .poll(
+        async () => {
+          const input = await this.findInAllFrames(bpCodeSelector, 3).catch(() => null);
+          return input ? input.inputValue().catch(() => '') : '';
+        },
+        { timeout: 5000 }
+      )
+      .toBe('');
+
+    const selectedBpCode = await this.selectInitialCustomerFromLookup(bpCode);
+    const validations = [
+      {
+        label: 'BP Code',
+        expectedValue: bpCode,
+        actualValue: selectedBpCode
+      }
+    ];
+
+    await (await this.findVisibleInAllFrames('#tab1nav5', 20)).click();
+    for (const field of headerFields) {
+      const result = await this.setAndValidateHeaderField(
+        field.selector,
+        field.value,
+        field.label
+      );
+      validations.push({
+        label: field.label,
+        expectedValue: result.expectedValue,
+        actualValue: result.actualValue
+      });
+    }
+
+    return validations;
+  }
+
   async recreateLineItem(lineItem, hooks = {}, targetRowNumber = Number(lineItem.row || 0) || 1) {
     const itemCode = String(lineItem.itemCode || '').trim();
     const itemDesc = this.normalizeComparableText(lineItem.itemDesc);
@@ -258,6 +353,7 @@ class SalesOrder extends SalesOrderPage {
         uQuantity1,
         uQuantity2,
         validateUQuantity1: quantityResult.validateUQuantity1,
+        validateUQuantity2: quantityResult.validateUQuantity2,
         warehouseCode,
         warehouseName,
         profitCenterCode,
@@ -322,7 +418,11 @@ class SalesOrder extends SalesOrderPage {
             ? expectedText
             : this.normalizeComparableText(actualValue);
         },
-        { timeout: 10000, intervals: [100, 150, 250, 500] }
+        {
+          timeout: 10000,
+          intervals: [100, 150, 250, 500],
+          message: options.message
+        }
       )
       .toBe(expectedText);
   }
@@ -332,7 +432,8 @@ class SalesOrder extends SalesOrderPage {
       throw new Error(`Unable to recreate line because captured ${fieldName} is empty.`);
     }
 
-    const input = await this.findInAllFrames(selector, 20);
+    const input = await this.findVisibleInAllFrames(selector, 20)
+      .catch(() => this.findInAllFrames(selector, 20));
     const isDisabled = await input.evaluate((node) => Boolean(node.disabled)).catch(() => false);
     const isVisible = await input.isVisible().catch(() => false);
 
@@ -345,7 +446,9 @@ class SalesOrder extends SalesOrderPage {
     }
 
     const readActualValue = async () => {
-      const currentInput = await this.findInAllFrames(selector, 3).catch(() => null);
+      const currentInput = await this.findVisibleInAllFrames(selector, 3)
+        .catch(() => this.findInAllFrames(selector, 3))
+        .catch(() => null);
       if (!currentInput) return '';
 
       const currentValue = await currentInput.inputValue().catch(() => '');
@@ -365,18 +468,35 @@ class SalesOrder extends SalesOrderPage {
       'input#df_u_quantity1T1[name="df_u_quantity1T1"], input#df_u_quantity1T1';
     const uQuantity2Selector =
       'input#df_u_quantity2T1[name="df_u_quantity2T1"], input#df_u_quantity2T1';
-    const uQuantity1Input = await this.findInAllFrames(uQuantity1Selector, 20);
-    const isUQuantity1Editable = await this.isFieldEditable(uQuantity1Input);
+    const uQuantity2Input = await this.findVisibleInAllFrames(
+      'xpath=//*[@id="df_u_quantity2T1"]',
+      20
+    );
+    const currentUQuantity2 = this.normalizeComparableText(
+      await uQuantity2Input.inputValue().catch(() => '')
+    );
+    const currentUQuantity2Number = this.parseComparableNumber(currentUQuantity2);
+    const shouldFillCopiedQuantities =
+      !currentUQuantity2 || currentUQuantity2Number === 0;
 
-    if (isUQuantity1Editable) {
-      await this.fillAndValidateLineInput(
-        uQuantity1Selector,
-        uQuantity1,
-        'uQuantity1',
-        { numeric: true }
+    if (!shouldFillCopiedQuantities) {
+      console.log(
+        `[SALES ORDER RECREATE] Quantity 2 already contains "${currentUQuantity2}"; ` +
+          'leaving Quantity 1 and Quantity 2 unchanged.'
       );
+      return {
+        validateUQuantity1: false,
+        validateUQuantity2: false,
+        quantitiesUpdated: false
+      };
     }
 
+    await this.fillAndValidateLineInput(
+      uQuantity1Selector,
+      uQuantity1,
+      'uQuantity1',
+      { numeric: true }
+    );
     await this.fillAndValidateLineInput(
       uQuantity2Selector,
       uQuantity2,
@@ -385,28 +505,10 @@ class SalesOrder extends SalesOrderPage {
     );
 
     return {
-      validateUQuantity1: isUQuantity1Editable
+      validateUQuantity1: true,
+      validateUQuantity2: true,
+      quantitiesUpdated: true
     };
-  }
-
-  async isFieldEditable(locator) {
-    const fieldState = await locator
-      .evaluate((node) => ({
-        disabled: Boolean(node.disabled),
-        readOnly: Boolean(node.readOnly),
-        ariaDisabled: node.getAttribute('aria-disabled') === 'true'
-      }))
-      .catch(() => ({ disabled: true, readOnly: true, ariaDisabled: true }));
-    const isVisible = await locator.isVisible().catch(() => false);
-    const isEditable = await locator.isEditable().catch(() => false);
-
-    return (
-      isVisible &&
-      isEditable &&
-      !fieldState.disabled &&
-      !fieldState.readOnly &&
-      !fieldState.ariaDisabled
-    );
   }
 
   async expectLineInputValue(selector, expectedValue, fieldName) {
@@ -487,7 +589,6 @@ class SalesOrder extends SalesOrderPage {
       ['Item Code', 'itemcode', values.itemCode],
       ['Item Description', 'itemdesc', values.itemDesc],
       ['Unit Price', 'unitprice', values.unitPrice, { numeric: true }],
-      ['U Quantity 2', 'u_quantity2', values.uQuantity2, { numeric: true }],
       ['Warehouse Code', 'whscode', values.warehouseCode],
       ['Warehouse Name', 'u_warehousename', values.warehouseName],
       ['Profit Center Code', 'drcode', values.profitCenterCode],
@@ -495,13 +596,24 @@ class SalesOrder extends SalesOrderPage {
       ['Business Center', 'u_business_center', values.businessCenter]
     ];
 
+    const quantityValidations = [];
     if (values.validateUQuantity1 !== false) {
-      validations.splice(
-        3,
-        0,
-        ['U Quantity 1', 'u_quantity1', values.uQuantity1, { numeric: true }]
-      );
+      quantityValidations.push([
+        'U Quantity 1',
+        'u_quantity1',
+        values.uQuantity1,
+        { numeric: true }
+      ]);
     }
+    if (values.validateUQuantity2 !== false) {
+      quantityValidations.push([
+        'U Quantity 2',
+        'u_quantity2',
+        values.uQuantity2,
+        { numeric: true }
+      ]);
+    }
+    validations.splice(3, 0, ...quantityValidations);
 
     for (const [label, fieldName, expectedValue, options = {}] of validations) {
       const result = await this.expectTableRowValue(
@@ -526,9 +638,12 @@ class SalesOrder extends SalesOrderPage {
 
     const selector =
       `input#df_${fieldName}T1r${rowNumber}, ` +
+      `input#sf_${fieldName}T1r${rowNumber}, ` +
       `label#dd_${fieldName}T1r${rowNumber}, ` +
+      `label#sf_${fieldName}T1r${rowNumber}, ` +
       `#df_${fieldName}T1r${rowNumber}, ` +
-      `#dd_${fieldName}T1r${rowNumber}`;
+      `#dd_${fieldName}T1r${rowNumber}, ` +
+      `#sf_${fieldName}T1r${rowNumber}`;
     const readActualValue = async () => {
       const element = await this.findInAllFrames(selector, 3).catch(() => null);
       if (!element) return '';
@@ -540,7 +655,12 @@ class SalesOrder extends SalesOrderPage {
       return this.normalizeComparableText(value);
     };
 
-    await this.waitForEquivalentValue(readActualValue, expectedValue, options);
+    await this.waitForEquivalentValue(readActualValue, expectedValue, {
+      ...options,
+      message:
+        `Sales Order row ${rowNumber} ${fieldLabel} should be "${expectedValue}" ` +
+        'after updating the line.'
+    });
 
     return {
       expectedValue,

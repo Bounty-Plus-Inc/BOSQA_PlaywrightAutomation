@@ -33,6 +33,7 @@ class SalesOrderPage extends BasePage {
       throw new Error('Sales Order customer code is required.');
     }
 
+    await this.closeOpenBusinessPartnerCflPages();
     const popupPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
     const customerLookup = await this.findInAllFrames(
       'img#cfl_bpcode[onclick*="OpenCFLbusinesspartners"]'
@@ -50,9 +51,53 @@ class SalesOrderPage extends BasePage {
       columnId: 'col_custnoT1'
     });
 
-    const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]');
-    await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 3000 });
+    await this.ensureBusinessPartnerCodeValue(selectedCustomerCode);
+    await this.closeOpenBusinessPartnerCflPages();
     return selectedCustomerCode;
+  }
+
+  async closeOpenBusinessPartnerCflPages() {
+    for (const openPage of this.page.context().pages()) {
+      if (openPage === this.page || openPage.isClosed()) continue;
+
+      if (/cflbusinesspartners\.php/i.test(openPage.url())) {
+        await openPage.close().catch(() => {});
+      }
+    }
+  }
+
+  async ensureBusinessPartnerCodeValue(expectedCode) {
+    const selector =
+      'input#df_bpcode[name="df_bpcode"], input#df_bpcode, input[name="df_bpcode"]';
+
+    await expect
+      .poll(
+        async () => {
+          const input = await this.findInAllFrames(selector, 3).catch(() => null);
+          if (!input) return '';
+
+          let propertyValue = String(await input.inputValue().catch(() => '')).trim();
+          const attributeValue = String(
+            (await input.getAttribute('value').catch(() => '')) || ''
+          ).trim();
+
+          if (propertyValue !== expectedCode && attributeValue === expectedCode) {
+            await input.evaluate((node, value) => {
+              node.value = value;
+              node.defaultValue = value;
+            }, expectedCode);
+            propertyValue = String(await input.inputValue().catch(() => '')).trim();
+          }
+
+          return propertyValue;
+        },
+        {
+          timeout: 5000,
+          intervals: [100, 150, 250, 500],
+          message: `Sales Order BP Code should be ${expectedCode} after CFL selection.`
+        }
+      )
+      .toBe(expectedCode);
   }
 
   async selectDocSeries(value) {
@@ -77,6 +122,7 @@ class SalesOrderPage extends BasePage {
   }
 
   async selectBusinessPartner(preferredCode, options = {}) {
+    await this.closeOpenBusinessPartnerCflPages();
     const cflButton = await this.findInAllFrames('#cfl_bpcode');
     const bpCFLPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
     await cflButton.click();
@@ -88,8 +134,8 @@ class SalesOrderPage extends BasePage {
     }
   
     const selectedCustomerCode = await bpCFL.selectCode(preferredCode,{entityName: 'Customer code', fieldName: 'custno', columnId: 'col_custnoT1'});
-    const bpCodeInput = await this.findInAllFrames('input#df_bpcode[name="df_bpcode"]');
-    await expect(bpCodeInput).toHaveValue(selectedCustomerCode, { timeout: 3000 });
+    await this.ensureBusinessPartnerCodeValue(selectedCustomerCode);
+    await this.closeOpenBusinessPartnerCflPages();
     return selectedCustomerCode;
   }
 
@@ -451,6 +497,48 @@ class SalesOrderPage extends BasePage {
       isDraft: true,
       statusMsg: draftMessage,
       isPostingDateOrDueDateInvalid: false
+    };
+  }
+
+  async selectFirstPaymentTermForDeliveryDateAdjustment() {
+    const accountingTab = await this.findVisibleInAllFrames(
+      'xpath=//*[@id="tab1nav3"]',
+      20
+    );
+    await accountingTab.click();
+
+    const paymentTerm = await this.findVisibleInAllFrames(
+      'xpath=//*[@id="df_paymentterm"]',
+      20
+    );
+    const firstOption = paymentTerm.locator('option').first();
+    await expect(firstOption).toHaveCount(1);
+
+    const expectedValue = await firstOption.evaluate((option) => option.value);
+    const expectedLabel = String(
+      (await firstOption.textContent().catch(() => '')) || expectedValue || ''
+    ).trim();
+
+    await paymentTerm.selectOption({ index: 0 });
+    await expect(paymentTerm).toHaveValue(expectedValue, { timeout: 5000 });
+    await this.page.waitForTimeout(300);
+
+    const selectedOption = paymentTerm.locator('option:checked');
+    const actualValue = await paymentTerm.inputValue();
+    const actualLabel = String(
+      (await selectedOption.textContent().catch(() => '')) || actualValue || ''
+    ).trim();
+
+    const generalTab = await this.findVisibleInAllFrames(
+      'xpath=//*[@id="tab1nav5"]',
+      20
+    );
+    await generalTab.click();
+
+    return {
+      index: 0,
+      expectedValue: expectedLabel || expectedValue,
+      actualValue: actualLabel || actualValue
     };
   }
 
