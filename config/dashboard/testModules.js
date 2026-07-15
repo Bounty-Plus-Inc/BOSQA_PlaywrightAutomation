@@ -28,7 +28,8 @@ export const testModules = {
     label: 'Inventory',
     icon: 'file',
     order: 60
-  },
+  }
+,
   'purchasing': {
     label: 'Purchasing',
     icon: 'file',

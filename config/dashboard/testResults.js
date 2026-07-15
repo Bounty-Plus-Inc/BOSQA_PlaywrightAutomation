@@ -393,45 +393,44 @@ export const testResults = {
   "purchasing-purchase-request": {
     title: "Purchase Request",
     screenshotsDir: "test-results/screenshots/purchasing_purchase-request",
-      dataInputs: [
-    {
-      id: "vendorCode",
-      label: "Vendor Code",
-      envKey: "BPI_PR_VENDOR_CODE",
-      required: true,
-    },
-    {
-      id: "itemCode",
-      label: "Item Code",
-      envKey: "BPI_PR_ITEM_CODE",
-      required: true,
-    },
-    {
-      id: "warehouseCode",
-      label: "Warehouse Code",
-      envKey: "BPI_PR_WAREHOUSE_CODE",
-      required: true,
-    },
-    {
-      id: "requestedBy",
-      label: "Requested By",
-      envKey: "BPI_PR_REQUESTED_BY",
-      required: true,
-    },
-    {
-      id: "buyer",
-      label: "Buyer",
-      envKey: "BPI_PR_BUYER",
-      required: true,
-    },
-    {
-      id: "remarks",
-      label: "Remarks",
-      envKey: "BPI_PR_REMARKS",
-      required: true,
-    },
-   
-  ],
+    dataInputs: [
+      {
+        id: "vendorCode",
+        label: "Vendor Code",
+        envKey: "BPI_PR_VENDOR_CODE",
+        required: true,
+      },
+      {
+        id: "itemCode",
+        label: "Item Code",
+        envKey: "BPI_PR_ITEM_CODE",
+        required: true,
+      },
+      {
+        id: "warehouseCode",
+        label: "Warehouse Code",
+        envKey: "BPI_PR_WAREHOUSE_CODE",
+        required: true,
+      },
+      {
+        id: "requestedBy",
+        label: "Requested By",
+        envKey: "BPI_PR_REQUESTED_BY",
+        required: true,
+      },
+      {
+        id: "buyer",
+        label: "Buyer",
+        envKey: "BPI_PR_BUYER",
+        required: true,
+      },
+      {
+        id: "remarks",
+        label: "Remarks",
+        envKey: "BPI_PR_REMARKS",
+        required: true,
+      },
+    ],
     steps: {
       "00_PURCHASING_PURCHASE_REQUEST_OPENED.png": {
         title: "Purchase Request opened",
@@ -482,7 +481,6 @@ export const testResults = {
         title: "Remarks Entered",
         description: "Remarks were entered successfully.",
       },
-
 
       "10_ACCOUNTING_TAB_OPENED.png": {
         title: "Accounting Tab Opened",
@@ -536,6 +534,54 @@ export const testResults = {
       "21_PURCHASE_REQUEST_APPROVED.png": {
         title: "Purchase Request Approved",
         description: "The Purchase Request was successfully approved.",
+      },
+    },
+  },
+  "purchasing-purchase-acknowledgement": {
+    title: "Purchase Acknowleddgement",
+    screenshotsDir:
+      "test-results/screenshots/purchasing_purchase-acknowledgement",
+    dataInputs: [
+      {
+        id: "buyer",
+        label: "Buyer",
+        envKey: "BPI_PA_BUYER",
+        required: true,
+      },
+      {
+        id: "acknowledgementType",
+        label: "Acknowledgement Type",
+        envKey: "BPI_PA_ACKNOWLEDGEMENT_TYPE",
+        required: true,
+      },
+    ],
+    steps: {
+      "00_PURCHASING_PURCHASE_ACKNOWLEDGEMENT_OPENED.png": {
+        title: "Purchase Acknowledgement opened",
+        description:
+          "The Purchasing Purchase Acknowledgement screen opened successfully.",
+      },
+      "01_BUYER_BUTTON_POPUP.png": {
+        title: "Buyer CFL Popup",
+        description: "Buyer lookup popup displayed.",
+      },
+      "02_FILTER_BUTTON_CLICKED.png": {
+        title: "Filter Button Clicked",
+        description: "The filter button was clicked.",
+      },
+      "03_ACKNOWLEDGEMENT_TYPE_SELECTED.png": {
+        title: "Acknowledgement Type Selected",
+        description: "The Acknowledgement Type was selected.",
+      },
+      "04_PURCHASE_ACKNOWLEDGEMENT_SAVED_AS_DRAFT.png": {
+        title: "Purchase Acknowledgement Saved as Draft",
+        description:
+          "The Purchase Acknowledgement was successfully saved as a draft.",
+      },
+      "05_PURCHASE_ACKNOWLEDGEMENT_DOCUMENT_ADDED.png": {
+        title: "Purchase Acknowledgement Document Added",
+        description:
+          "The Purchase Acknowledgement document was successfully added.",
       },
     },
   },

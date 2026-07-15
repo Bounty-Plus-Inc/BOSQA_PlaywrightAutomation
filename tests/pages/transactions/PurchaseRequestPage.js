@@ -11,24 +11,6 @@ const { WarehouseCFL } = require("../popups/WarehouseCFL");
 const { BuyerCFL } = require("../popups/BuyerCFL");
 const { ApprovalMatrixTitleCFL } = require("../popups/ApprovalMatrixTitleCFL");
 class PurchaseRequestPage extends BasePage {
-  constructor(page) {
-    super(page);
-    this.vendorButton = page.locator('xpath=//*[@id="cfl_bpcode"]');
-    this.itemButton = page.locator('xpath=//*[@id="cfl_itemcodeT1"]');
-    this.warehouseButton = page.locator('xpath=//*[@id="cfl_whscodeT1"]');
-    this.addLineButton = page.locator('xpath=//*[@id="T1_btnUpdate"]');
-    this.generalTab = page.locator('xpath=//*[@id="tab1nav5"]');
-    this.accountingTab = page.locator('xpath=//*[@id="tab1nav3"]');
-    this.paymentButton = page.locator('xpath=//*[@id="df_paymentterm"]');
-    this.buyerButton = page.locator('xpath=//*[@id="cfl_u_buyer"]');
-    this.approvalMatrixButton = page.locator(
-      'xpath=//*[@id="cfl_u_approvalmatrixtitle"]',
-    );
-    this.saveDraftButton = page.locator('xpath=//*[@id="btnSaveAsDraft"]');
-    this.addButton = page.locator('xpath=//*[@id="btnUpdate"]');
-    this.updateButton = page.locator('xpath=//*[@id="btnUpdate"]');
-  }
-
   async expectLoaded() {
     await expect
       .poll(
